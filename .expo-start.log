@@ -1,0 +1,9 @@
+env: load .env
+env: export EXPO_PUBLIC_API_URL
+Starting project at C:\Users\nacho\MaisonPriveeMobile
+Starting Metro Bundler
+
+Waiting on http://localhost:8081
+
+Logs for your project will appear below.
+TypeScript: The tsconfig.json#include property has been updated

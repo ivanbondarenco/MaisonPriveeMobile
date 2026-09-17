@@ -1,0 +1,14 @@
+  --non-interactive is not supported, use $CI=1 instead
+env: load .env
+env: export EXPO_PUBLIC_API_URL
+Starting project at C:\Users\nacho\MaisonPriveeMobile
+CommandError: It looks like you're trying to use web support but don't have the required
+dependencies installed.
+
+Install react-native-web@^0.21.2 by running:
+
+npx expo install react-native-web
+
+If you're not using web, please ensure you remove the "web" string from the
+platforms array in the project Expo config.
+
