@@ -27,7 +27,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Maison Privée Atelier needs access to your photos so you can attach your bank transfer receipt."
+          "photosPermission": "Maison Privée Atelier needs access to your photos so you can attach your bank transfer receipt and photograph pieces you submit for consignment.",
+          "cameraPermission": "Maison Privée Atelier needs access to your camera so you can photograph the pieces you submit for consignment."
         }
       ]
     ]

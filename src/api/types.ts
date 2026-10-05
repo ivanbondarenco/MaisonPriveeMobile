@@ -132,3 +132,83 @@ export type ProductFilters = {
   minPrice?: number;
   maxPrice?: number;
 };
+
+// Mirrors backend/prisma/schema.prisma model Consignment as returned by
+// GET /api/consignment/mine (with its linked product, if one was created).
+export type ConsignmentStatus = "PENDING" | "REVIEWING" | "ACCEPTED" | "REJECTED" | "PAID_OUT";
+
+export type Consignment = {
+  id: string;
+  brand: string;
+  category: string | null;
+  size: string | null;
+  condition: string | null;
+  material: string | null;
+  color: string | null;
+  yearCollection: string | null;
+  serialNumber: string | null;
+  packaging: string | null;
+  notes: string | null;
+  // Paths relative to the backend host ("/uploads/consignment/..."), not absolute URLs.
+  photos: string[] | null;
+  status: ConsignmentStatus;
+  submissionType: "CONSIGNMENT" | "INSTANT_LIQUIDITY";
+  payoutMethod: "CASH" | "CREDIT";
+  priceExpectation: string | null;
+  payoutAmount: number | null;
+  paidOutAt: string | null;
+  acceptOffers: boolean;
+  createdAt: string;
+  product: {
+    id: string;
+    title: string;
+    status: string;
+    priceAmount: number;
+    currency: string;
+    images: { url: string; altText: string }[];
+  } | null;
+};
+
+export type OfferStatus = "PENDING" | "ACCEPTED" | "REJECTED";
+
+// GET /api/offers/received — offers other clients made on pieces this user owns.
+export type ReceivedOffer = {
+  id: string;
+  amount: number;
+  status: OfferStatus;
+  createdAt: string;
+  respondedAt: string | null;
+  user: { id: string; name: string | null; email: string };
+  product: {
+    id: string;
+    title: string;
+    priceAmount: number;
+    currency: string;
+    status: string;
+    images: { url: string; altText: string }[];
+    brand: { id: string; name: string };
+  };
+};
+
+// GET /api/users/referral-stats — referralCode is the user's own id, by design.
+export type ReferralStats = {
+  referralCode: string;
+  referredCount: number;
+  totalEarned: number;
+};
+
+// GET /api/credits/me — balance in USD (1 credit = 1 USD) plus the latest 50 movements.
+export type CreditTransaction = {
+  id: string;
+  amount: number; // signed: positive = earned, negative = spent
+  type: "EARNED" | "SPENT" | "ADJUSTMENT";
+  reason: string;
+  consignmentId: string | null;
+  orderId: string | null;
+  createdAt: string;
+};
+
+export type SiteCredit = {
+  balance: number;
+  transactions: CreditTransaction[];
+};

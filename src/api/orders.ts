@@ -23,6 +23,8 @@ export const validateCoupon = (code: string, subtotal: number) =>
   apiRequest<CouponValidation>("/coupons/validate", { method: "POST", body: { code, subtotal } });
 
 export const createOrder = (payload: {
+  // Items + shipping, BEFORE coupon and credit: the backend re-resolves the
+  // coupon and subtracts it itself, then clamps creditApplied to the balance.
   totalAmount: number;
   shippingProvider?: string;
   shippingMethod?: string;
@@ -34,6 +36,7 @@ export const createOrder = (payload: {
   paymentType: "TRANSFER";
   transferProofUrl?: string | null;
   couponCode?: string;
+  creditApplied?: number;
   items: { productId: string; quantity: number; price: number }[];
 }) => apiRequest<Order>("/orders", { method: "POST", body: payload });
 

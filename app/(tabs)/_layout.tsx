@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Heart, ShoppingBag, Store, User } from "lucide-react-native";
+import { Heart, ShoppingBag, Store, Tag, User } from "lucide-react-native";
 
 import { colors } from "@/theme";
 
@@ -41,6 +41,13 @@ export default function TabsLayout() {
         options={{
           title: "Cart",
           tabBarIcon: ({ color, size }) => <ShoppingBag color={color} size={size} strokeWidth={1.5} />,
+        }}
+      />
+      <Tabs.Screen
+        name="sell"
+        options={{
+          title: "Sell",
+          tabBarIcon: ({ color, size }) => <Tag color={color} size={size} strokeWidth={1.5} />,
         }}
       />
       <Tabs.Screen

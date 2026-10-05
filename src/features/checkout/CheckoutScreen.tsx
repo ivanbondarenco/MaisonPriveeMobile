@@ -1,9 +1,20 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  View,
+} from "react-native";
 
+import { getMyCredits, myCreditsQueryKey } from "@/api/credits";
 import { createOrder, getShippingRates, uploadTransferProof, validateCoupon as validateCouponRequest } from "@/api/orders";
 import { checkoutSchema } from "@/api/schemas";
 import type { ShippingRate } from "@/api/types";
@@ -19,6 +30,7 @@ const priceFormatter = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2
 
 export function CheckoutScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { lines, subtotal, clear } = useCart();
 
   const [recipientName, setRecipientName] = useState("");
@@ -47,8 +59,16 @@ export function CheckoutScreen() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [useCredit, setUseCredit] = useState(false);
+  const { data: credits } = useQuery({ queryKey: myCreditsQueryKey, queryFn: getMyCredits });
+  const creditBalance = credits?.balance ?? 0;
+
+  // Same arithmetic as the storefront checkout; the server re-derives all of it.
   const shippingCost = selectedRate?.price ?? 0;
   const total = Math.max(0, subtotal + shippingCost - couponDiscount);
+  const creditApplied = useCredit ? Math.min(creditBalance, total) : 0;
+  const amountToPay = Math.max(0, total - creditApplied);
+  const fullyCoveredByCredit = creditApplied > 0 && amountToPay <= 0;
 
   const validateAddress = () => {
     const result = checkoutSchema.safeParse({
@@ -166,7 +186,7 @@ export function CheckoutScreen() {
     setIsSubmitting(true);
     try {
       await createOrder({
-        totalAmount: total,
+        totalAmount: subtotal + selectedRate.price,
         shippingProvider: selectedRate.provider,
         shippingMethod: selectedRate.method,
         shippingCost: selectedRate.price,
@@ -182,10 +202,12 @@ export function CheckoutScreen() {
         recipientPhone: address.recipientPhone,
         recipientTaxId: address.recipientTaxId,
         paymentType: "TRANSFER",
-        transferProofUrl: proofUrl,
+        transferProofUrl: fullyCoveredByCredit ? null : proofUrl,
         couponCode: couponDiscount > 0 ? couponCode.trim() : undefined,
+        creditApplied: creditApplied > 0 ? creditApplied : undefined,
         items: lines.map((l) => ({ productId: l.product.id, quantity: l.quantity, price: l.product.priceAmount })),
       });
+      if (creditApplied > 0) queryClient.invalidateQueries({ queryKey: myCreditsQueryKey });
       clear();
       router.replace("/orders");
     } catch (error) {
@@ -262,32 +284,63 @@ export function CheckoutScreen() {
             <AppText variant="body" style={styles.couponApplied}>Discount applied: -USD {priceFormatter.format(couponDiscount)}</AppText>
           ) : null}
 
-          <AppText variant="label" style={styles.sectionLabel}>
-            Bank Transfer Receipt
-          </AppText>
-          {proofUrl ? (
-            <Button label="Receipt Uploaded ✓" variant="outline" onPress={handlePickProofPhoto} style={styles.sectionButton} />
-          ) : (
-            <View style={styles.proofRow}>
-              <Button
-                label="Photo"
-                variant="outline"
-                onPress={handlePickProofPhoto}
-                loading={isUploadingProof}
-                style={styles.proofButton}
-              />
-              <Button
-                label="PDF"
-                variant="outline"
-                onPress={handlePickProofDocument}
-                loading={isUploadingProof}
-                style={styles.proofButton}
-              />
-            </View>
+          {creditBalance > 0 ? (
+            <>
+              <AppText variant="label" style={styles.sectionLabel}>
+                Site Credit
+              </AppText>
+              <View style={styles.creditRow}>
+                <View style={styles.creditText}>
+                  <AppText variant="body">Apply my site credit</AppText>
+                  <AppText variant="caption" style={styles.proofHint}>
+                    Available: USD {priceFormatter.format(creditBalance)}
+                  </AppText>
+                </View>
+                <Switch
+                  value={useCredit}
+                  onValueChange={setUseCredit}
+                  trackColor={{ false: colors.borderLight, true: colors.gold }}
+                  thumbColor={colors.white}
+                />
+              </View>
+              {creditApplied > 0 ? (
+                <AppText variant="body" style={styles.couponApplied}>
+                  USD {priceFormatter.format(creditApplied)} will be deducted from your total.
+                </AppText>
+              ) : null}
+            </>
+          ) : null}
+
+          {fullyCoveredByCredit ? null : (
+            <>
+              <AppText variant="label" style={styles.sectionLabel}>
+                Bank Transfer Receipt
+              </AppText>
+              {proofUrl ? (
+                <Button label="Receipt Uploaded ✓" variant="outline" onPress={handlePickProofPhoto} style={styles.sectionButton} />
+              ) : (
+                <View style={styles.proofRow}>
+                  <Button
+                    label="Photo"
+                    variant="outline"
+                    onPress={handlePickProofPhoto}
+                    loading={isUploadingProof}
+                    style={styles.proofButton}
+                  />
+                  <Button
+                    label="PDF"
+                    variant="outline"
+                    onPress={handlePickProofDocument}
+                    loading={isUploadingProof}
+                    style={styles.proofButton}
+                  />
+                </View>
+              )}
+              <AppText variant="caption" style={styles.proofHint}>
+                You can also send it separately after placing the order.
+              </AppText>
+            </>
           )}
-          <AppText variant="caption" style={styles.proofHint}>
-            You can also send it separately after placing the order.
-          </AppText>
 
           <View style={styles.summary}>
             <View style={styles.summaryRow}>
@@ -304,11 +357,22 @@ export function CheckoutScreen() {
                 <AppText variant="body">-USD {priceFormatter.format(couponDiscount)}</AppText>
               </View>
             ) : null}
+            {creditApplied > 0 ? (
+              <View style={styles.summaryRow}>
+                <AppText variant="label">Site Credit</AppText>
+                <AppText variant="body">-USD {priceFormatter.format(creditApplied)}</AppText>
+              </View>
+            ) : null}
             <View style={styles.summaryRow}>
-              <AppText variant="bodyMedium">Total</AppText>
-              <AppText variant="bodyMedium">USD {priceFormatter.format(total)}</AppText>
+              <AppText variant="bodyMedium">{creditApplied > 0 ? "To Pay" : "Total"}</AppText>
+              <AppText variant="bodyMedium">USD {priceFormatter.format(amountToPay)}</AppText>
             </View>
           </View>
+          {fullyCoveredByCredit ? (
+            <AppText variant="caption" style={styles.proofHint}>
+              Your site credit covers this order — no transfer needed.
+            </AppText>
+          ) : null}
 
           {formError ? <AppText variant="body" style={styles.errorText}>{formError}</AppText> : null}
 
@@ -366,6 +430,15 @@ const styles = StyleSheet.create({
   },
   couponButton: {
     marginTop: 20,
+  },
+  creditRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  creditText: {
+    flex: 1,
   },
   couponApplied: {
     color: colors.gold,

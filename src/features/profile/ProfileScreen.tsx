@@ -1,11 +1,12 @@
 import { useRouter } from "expo-router";
-import { StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import { AppText } from "@/components/AppText";
 import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
 import { useAuth } from "@/context/AuthContext";
 import { colors, spacing } from "@/theme";
+import { SiteCreditCard } from "./SiteCreditCard";
 
 export function ProfileScreen() {
   const router = useRouter();
@@ -38,20 +39,24 @@ export function ProfileScreen() {
 
   return (
     <Screen>
-      <View style={styles.header}>
-        <AppText variant="caption">Signed in as</AppText>
-        <AppText variant="display" style={styles.name}>
-          {user.name}
-        </AppText>
-        <AppText variant="body" style={styles.email}>
-          {user.email}
-        </AppText>
-      </View>
+      <ScrollView>
+        <View style={styles.header}>
+          <AppText variant="caption">Signed in as</AppText>
+          <AppText variant="display" style={styles.name}>
+            {user.name}
+          </AppText>
+          <AppText variant="body" style={styles.email}>
+            {user.email}
+          </AppText>
+        </View>
 
-      <View style={styles.footerActions}>
-        <Button label="My Orders" variant="outline" onPress={() => router.push("/orders")} style={styles.ordersButton} />
-        <Button label="Sign Out" variant="outline" onPress={logout} />
-      </View>
+        <SiteCreditCard />
+
+        <View style={styles.footerActions}>
+          <Button label="My Orders" variant="outline" onPress={() => router.push("/orders")} style={styles.ordersButton} />
+          <Button label="Sign Out" variant="outline" onPress={logout} />
+        </View>
+      </ScrollView>
     </Screen>
   );
 }

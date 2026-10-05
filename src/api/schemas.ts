@@ -37,3 +37,13 @@ export const checkoutSchema = z.object({
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
+
+// Mirrors the only server-side requirement on POST /api/consignment
+// (name + email + brand); every other field is optional there too.
+export const consignmentSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Enter a valid email"),
+  brand: z.string().min(1, "Brand is required"),
+});
+
+export type ConsignmentInput = z.infer<typeof consignmentSchema>;

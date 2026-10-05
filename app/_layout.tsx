@@ -57,6 +57,11 @@ export default function RootLayout() {
               <Stack.Screen name="checkout" options={{ title: "Checkout" }} />
               <Stack.Screen name="orders/index" options={{ title: "My Orders" }} />
               <Stack.Screen name="orders/[id]" options={{ title: "Order" }} />
+              <Stack.Screen name="consign/new" options={{ title: "Submit a Piece" }} />
+              <Stack.Screen name="consignments/index" options={{ title: "My Submissions" }} />
+              <Stack.Screen name="consignments/[id]" options={{ title: "Submission" }} />
+              <Stack.Screen name="offers/index" options={{ title: "Offers Received" }} />
+              <Stack.Screen name="refer" options={{ title: "Refer a Seller" }} />
             </Stack>
           </CartProvider>
         </AuthProvider>

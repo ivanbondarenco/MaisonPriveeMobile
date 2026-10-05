@@ -77,6 +77,7 @@ Criterio de salida de esta fase: un usuario puede loguearse, navegar el catálog
 2. **Mis ofertas**: `GET /api/offers/received` + `PATCH /api/offers/:id/respond` para aceptar/rechazar (recordar: aceptar una oferta actualiza el precio del producto y auto-rechaza las demás, es lógica de backend ya existente, no hay que replicarla en el cliente).
 3. **Referidos**: pantalla que arma el link `https://maisonpriveeatelier.com/refer?ref={userId}` (mismo mecanismo que hoy, el "código" es el propio `userId`) y lo comparte con `expo-sharing` en vez de copiar al portapapeles. Stats vía `GET /api/users/referral-stats`.
 4. **Estado de mis consignaciones**: si no existe un endpoint `GET /api/consignment/mine` filtrado por usuario, agregarlo en backend (hoy `consignment.ts` probablemente solo tiene listado admin — verificar antes de asumir).
+5. **Site credit**: saldo e historial en el perfil (`GET /api/credits/me`) y opción de aplicarlo en checkout (`creditApplied` en `POST /api/orders`, clamp server-side). Cubre el payout con `payoutMethod=CREDIT` y los bonos de primera venta/referido.
 
 ## Fase 4 — Membresía y pulido
 
