@@ -6,41 +6,12 @@ Starting Metro Bundler
 warning: Bundler cache is empty, rebuilding (this may take a minute)
 Waiting on http://localhost:8081
 
-An update for expo is available: 57.0.23 → ~57.0.24
-5 other packages may need updating. Run npx expo install --check for details.
+An update for expo is available: 57.0.23 → ~57.0.26
+7 other packages may need updating. Run npx expo install --check for details.
 Logs for your project will appear below.
-Web Bundled 8425ms node_modules\expo-router\entry.js (3115 modules)
-Web Bundled 86ms node_modules\expo-router\entry.js (1 module)
-Web  INFO  %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-Web  LOG  Running application "main" with appParams:
- {"hydrate": undefined, "rootTag": "#root"} 
-Development-level warnings: ON.
-Performance optimizations: OFF.
-Web  WARN  [expo-notifications] Listening to push token changes is not yet fully supported on web. Adding a listener will have no effect.
-Web  ERROR  [TypeError: ExpoSecureStore.default.getValueWithKeyAsync is not a function] 
-
-Code: secureStore.ts
-[0m [90m 34 |[39m [36mexport[39m [36mconst[39m cartLinesStore [33m=[39m {
- [90m 35 |[39m   [36mget[39m[33m:[39m [36masync[39m [33m<[39m[33mT[39m[33m,[39m[33m>[39m()[33m:[39m [33mPromise[39m[33m<[39m[33mT[39m [33m|[39m [36mnull[39m[33m>[39m [33m=>[39m {
-[31m[1m>[22m[39m[90m 36 |[39m     [36mconst[39m raw [33m=[39m [36mawait[39m [33mSecureStore[39m[33m.[39mgetItemAsync([33mCART_LINES_KEY[39m)[33m;[39m
- [90m    |[39m                                   [31m[1m^[22m[39m
- [90m 37 |[39m     [36mreturn[39m raw [33m?[39m ([33mJSON[39m[33m.[39mparse(raw) [36mas[39m [33mT[39m) [33m:[39m [36mnull[39m[33m;[39m
- [90m 38 |[39m   }[33m,[39m
- [90m 39 |[39m   [36mset[39m[33m:[39m (lines[33m:[39m unknown) [33m=>[39m [33mSecureStore[39m[33m.[39msetItemAsync([33mCART_LINES_KEY[39m[33m,[39m [33mJSON[39m[33m.[39mstringify(lines))[33m,[39m[0m
-Call Stack
-  cartLinesStore.get (src\lib\secureStore.ts:36:35)
-  <anonymous> (src\context\CartContext.tsx:90:43)
-  useEffect$argument_0 (src\context\CartContext.tsx:102:6)
-Web  ERROR  [TypeError: ExpoSecureStore.default.getValueWithKeyAsync is not a function] 
-
-Code: secureStore.ts
-[0m [90m 22 |[39m [36mexport[39m [36mconst[39m userStore [33m=[39m {
- [90m 23 |[39m   [36mget[39m[33m:[39m [36masync[39m [33m<[39m[33mT[39m[33m,[39m[33m>[39m()[33m:[39m [33mPromise[39m[33m<[39m[33mT[39m [33m|[39m [36mnull[39m[33m>[39m [33m=>[39m {
-[31m[1m>[22m[39m[90m 24 |[39m     [36mconst[39m raw [33m=[39m [36mawait[39m [33mSecureStore[39m[33m.[39mgetItemAsync([33mAUTH_USER_KEY[39m)[33m;[39m
- [90m    |[39m                                   [31m[1m^[22m[39m
- [90m 25 |[39m     [36mreturn[39m raw [33m?[39m ([33mJSON[39m[33m.[39mparse(raw) [36mas[39m [33mT[39m) [33m:[39m [36mnull[39m[33m;[39m
- [90m 26 |[39m   }[33m,[39m
- [90m 27 |[39m   [36mset[39m[33m:[39m (user[33m:[39m unknown) [33m=>[39m [33mSecureStore[39m[33m.[39msetItemAsync([33mAUTH_USER_KEY[39m[33m,[39m [33mJSON[39m[33m.[39mstringify(user))[33m,[39m[0m
-Call Stack
-  userStore.get (src\lib\secureStore.ts:24:35)
-  useEffect$argument_0 (src\context\AuthContext.tsx:25:15)
+iOS Bundled 17622ms node_modules\expo-router\entry.js (3582 modules)
+ WARN  expo-notifications: Android Push notifications (remote notifications) functionality provided by expo-notifications was removed from Expo Go with the release of SDK 53. Use a development build instead of Expo Go. Learn more at https://docs.expo.dev/develop/development-builds/introduction/.
+ WARN  `expo-notifications` functionality is not fully supported in Expo Go:
+We recommend you instead use a development build to avoid limitations. Learn more: https://expo.fyi/dev-client.
+iOS Bundled 8920ms node_modules\expo-router\entry.js (3585 modules)
+iOS Bundled 119ms node_modules\expo-router\entry.js (1 module)

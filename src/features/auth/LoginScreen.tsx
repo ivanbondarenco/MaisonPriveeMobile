@@ -8,10 +8,12 @@ import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
 import { TextField } from "@/components/TextField";
 import { useAuth } from "@/context/AuthContext";
+import { useT } from "@/i18n";
 import { ApiError } from "@/lib/apiClient";
 import { spacing } from "@/theme";
 
 export function LoginScreen() {
+  const t = useT();
   const router = useRouter();
   const { login } = useAuth();
 
@@ -40,7 +42,7 @@ export function LoginScreen() {
       await login(result.data);
       router.back();
     } catch (error) {
-      setFormError(error instanceof ApiError ? error.message : "Something went wrong.");
+      setFormError(error instanceof ApiError ? error.message : t.auth.somethingWrong);
     } finally {
       setIsSubmitting(false);
     }
@@ -54,15 +56,15 @@ export function LoginScreen() {
       >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <AppText variant="display" style={styles.title}>
-          Sign In
+          {t.auth.signInTitle}
         </AppText>
         <AppText variant="body" style={styles.subtitle}>
-          Access your Maison Privée account.
+          {t.auth.loginSubtitle}
         </AppText>
 
         <View style={styles.form}>
           <TextField
-            label="Email"
+            label={t.auth.email}
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
@@ -72,7 +74,7 @@ export function LoginScreen() {
             error={fieldErrors.email}
           />
           <TextField
-            label="Password"
+            label={t.auth.password}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -88,13 +90,13 @@ export function LoginScreen() {
             </AppText>
           ) : null}
 
-          <Button label="Sign In" onPress={handleSubmit} loading={isSubmitting} />
+          <Button label={t.common.signIn} onPress={handleSubmit} loading={isSubmitting} />
         </View>
 
         <View style={styles.footer}>
-          <AppText variant="body">Don't have an account? </AppText>
+          <AppText variant="body">{t.auth.noAccount} </AppText>
           <Link href="/(auth)/register" replace asChild>
-            <AppText variant="bodyMedium">Register</AppText>
+            <AppText variant="bodyMedium">{t.auth.register}</AppText>
           </Link>
         </View>
       </ScrollView>

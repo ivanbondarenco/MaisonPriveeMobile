@@ -9,10 +9,12 @@ export const login = (input: LoginInput) =>
     auth: false,
   });
 
-export const register = (input: RegisterInput) =>
+// referredBy: the referrer's user id from a ?ref= link. The backend ignores ids
+// that don't match a user, so a stale one can't block the sign-up.
+export const register = (input: RegisterInput, referredBy?: string | null) =>
   apiRequest<AuthResponse>("/users/register", {
     method: "POST",
-    body: { ...input, platform: "ios" },
+    body: { ...input, referredBy: referredBy ?? null, platform: "ios" },
     auth: false,
   });
 

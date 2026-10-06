@@ -6,18 +6,13 @@ import { Linking, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { getMyOrders } from "@/api/orders";
 import { AppText } from "@/components/AppText";
 import { Screen } from "@/components/Screen";
+import { dateLocale, useI18n } from "@/i18n";
 import { colors, spacing } from "@/theme";
 
 const priceFormatter = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const STATUS_LABEL: Record<string, string> = {
-  PENDING: "Pending",
-  SHIPPED: "Shipped",
-  COMPLETED: "Completed",
-  CANCELLED: "Cancelled",
-};
-
 export function OrderDetailScreen({ orderId }: { orderId: string }) {
+  const { t, locale } = useI18n();
   // Reuses the "orders" query cache from OrdersScreen instead of a separate
   // per-order endpoint — GET /api/orders/mine already returns items.
   const { data, isLoading } = useQuery({
@@ -34,7 +29,7 @@ export function OrderDetailScreen({ orderId }: { orderId: string }) {
   if (!order) {
     return (
       <Screen style={styles.centered}>
-        <AppText variant="body">Order not found.</AppText>
+        <AppText variant="body">{t.orders.notFound}</AppText>
       </Screen>
     );
   }
@@ -42,17 +37,17 @@ export function OrderDetailScreen({ orderId }: { orderId: string }) {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
-        <AppText variant="caption">Order #{order.id.slice(0, 8).toUpperCase()}</AppText>
+        <AppText variant="caption">{t.orders.order} #{order.id.slice(0, 8).toUpperCase()}</AppText>
         <AppText variant="display" style={styles.status}>
-          {STATUS_LABEL[order.status] ?? order.status}
+          {t.orders.status[order.status as keyof typeof t.orders.status] ?? order.status}
         </AppText>
         <AppText variant="body" style={styles.date}>
-          {new Date(order.createdAt).toLocaleDateString()}
+          {new Date(order.createdAt).toLocaleDateString(dateLocale[locale])}
         </AppText>
 
         <View style={styles.shippingBox}>
           <View style={styles.shippingRow}>
-            <AppText variant="label">Shipping</AppText>
+            <AppText variant="label">{t.orders.shipping}</AppText>
             <AppText variant="body">
               {order.shippingProvider
                 ? `${order.shippingProvider}${order.shippingMethod ? ` · ${order.shippingMethod}` : ""}`
@@ -60,7 +55,7 @@ export function OrderDetailScreen({ orderId }: { orderId: string }) {
             </AppText>
           </View>
           <View style={styles.shippingRow}>
-            <AppText variant="label">Tracking</AppText>
+            <AppText variant="label">{t.orders.tracking}</AppText>
             {order.trackingUrl && order.trackingNumber ? (
               <Pressable onPress={() => Linking.openURL(order.trackingUrl!)}>
                 <AppText variant="body" style={styles.trackingLink}>
@@ -71,7 +66,7 @@ export function OrderDetailScreen({ orderId }: { orderId: string }) {
               <View style={styles.notShippedRow}>
                 <Truck size={14} color={colors.textMuted} strokeWidth={1.5} />
                 <AppText variant="body" style={styles.notShippedText}>
-                  Not yet shipped
+                  {t.orders.notShipped}
                 </AppText>
               </View>
             )}
@@ -80,7 +75,7 @@ export function OrderDetailScreen({ orderId }: { orderId: string }) {
 
         <View style={styles.itemsSection}>
           <AppText variant="label" style={styles.sectionLabel}>
-            Items
+            {t.orders.items}
           </AppText>
           {order.items.map((item) => (
             <View key={item.id} style={styles.itemRow}>
@@ -89,7 +84,7 @@ export function OrderDetailScreen({ orderId }: { orderId: string }) {
                 <AppText variant="body" numberOfLines={2}>
                   {item.product.title}
                 </AppText>
-                <AppText variant="caption">Qty {item.quantity}</AppText>
+                <AppText variant="caption">{t.orders.qty} {item.quantity}</AppText>
               </View>
               <AppText variant="body">USD {priceFormatter.format(item.price)}</AppText>
             </View>

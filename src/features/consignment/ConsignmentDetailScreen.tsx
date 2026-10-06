@@ -6,13 +6,14 @@ import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { consignmentPhotoUrl, getMyConsignments } from "@/api/consignment";
 import { AppText } from "@/components/AppText";
 import { Screen } from "@/components/Screen";
+import { dateLocale, fill, useI18n } from "@/i18n";
 import { colors, spacing } from "@/theme";
-import { isProductViewable, STATUS_COLOR, STATUS_LABEL } from "./status";
+import { isProductViewable, STATUS_COLOR } from "./status";
 
 const priceFormatter = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+const formatDate = (iso: string, locale: string) =>
+  new Date(iso).toLocaleDateString(locale, { month: "long", day: "numeric", year: "numeric" });
 
 function DetailRow({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null;
@@ -26,6 +27,7 @@ function DetailRow({ label, value }: { label: string; value: string | null | und
 
 export function ConsignmentDetailScreen({ consignmentId }: { consignmentId: string }) {
   const router = useRouter();
+  const { t, locale } = useI18n();
 
   // Reuses the list's cache: GET /api/consignment/mine already returns every
   // field, and GET /api/consignment/:id is admin-only.
@@ -43,7 +45,7 @@ export function ConsignmentDetailScreen({ consignmentId }: { consignmentId: stri
   if (!consignment) {
     return (
       <Screen style={styles.centered}>
-        <AppText variant="body">Submission not found.</AppText>
+        <AppText variant="body">{t.consignments.notFound}</AppText>
       </Screen>
     );
   }
@@ -57,18 +59,20 @@ export function ConsignmentDetailScreen({ consignmentId }: { consignmentId: stri
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
         <AppText variant="caption">
-          {consignment.submissionType === "INSTANT_LIQUIDITY" ? "Instant Liquidity" : "Consignment"}
+          {consignment.submissionType === "INSTANT_LIQUIDITY"
+            ? t.consignment.instantLiquidity
+            : t.consignment.consignmentType}
         </AppText>
         <AppText variant="display" style={styles.title}>
           {consignment.brand}
         </AppText>
         <View style={styles.metaRow}>
           <AppText variant="body" style={styles.muted}>
-            Submitted {formatDate(consignment.createdAt)}
+            {fill(t.consignments.submitted, { date: formatDate(consignment.createdAt, dateLocale[locale]) })}
           </AppText>
           <View style={[styles.statusBadge, { borderColor: statusColor }]}>
             <AppText variant="caption" style={{ color: statusColor }}>
-              {STATUS_LABEL[consignment.status] ?? consignment.status}
+              {t.consignments.status[consignment.status] ?? consignment.status}
             </AppText>
           </View>
         </View>
@@ -88,7 +92,9 @@ export function ConsignmentDetailScreen({ consignmentId }: { consignmentId: stri
 
         {product ? (
           <View style={styles.box}>
-            <AppText variant="label">{productViewable ? "Live Piece" : "Piece in Preparation"}</AppText>
+            <AppText variant="label">
+              {productViewable ? t.consignments.livePiece : t.consignments.piecePreparing}
+            </AppText>
             {productViewable ? (
               <Pressable onPress={() => router.push(`/product/${product.id}`)}>
                 <AppText variant="body" style={styles.link}>
@@ -99,7 +105,7 @@ export function ConsignmentDetailScreen({ consignmentId }: { consignmentId: stri
               <>
                 <AppText variant="body">{product.title}</AppText>
                 <AppText variant="body" style={styles.muted}>
-                  Our team is preparing the listing. It will be viewable once published.
+                  {t.consignments.preparingHint}
                 </AppText>
               </>
             )}
@@ -107,30 +113,39 @@ export function ConsignmentDetailScreen({ consignmentId }: { consignmentId: stri
         ) : null}
 
         <View style={styles.box}>
-          <AppText variant="label">Payout</AppText>
-          <DetailRow label="Method" value={consignment.payoutMethod === "CREDIT" ? "Site Credit" : "Cash"} />
-          <DetailRow label="Price Expectation" value={consignment.priceExpectation} />
+          <AppText variant="label">{t.consignments.payout}</AppText>
           <DetailRow
-            label="Payout Amount"
+            label={t.consignments.method}
+            value={consignment.payoutMethod === "CREDIT" ? t.consignment.siteCredit : t.consignment.cash}
+          />
+          <DetailRow label={t.consignments.priceExpectation} value={consignment.priceExpectation} />
+          <DetailRow
+            label={t.consignments.payoutAmount}
             value={consignment.payoutAmount != null ? `USD ${priceFormatter.format(consignment.payoutAmount)}` : null}
           />
-          <DetailRow label="Paid Out" value={consignment.paidOutAt ? formatDate(consignment.paidOutAt) : null} />
+          <DetailRow
+            label={t.consignments.paidOut}
+            value={consignment.paidOutAt ? formatDate(consignment.paidOutAt, dateLocale[locale]) : null}
+          />
           {consignment.submissionType === "CONSIGNMENT" ? (
-            <DetailRow label="Private Offers" value={consignment.acceptOffers ? "Accepted" : "Not accepted"} />
+            <DetailRow
+              label={t.consignments.privateOffers}
+              value={consignment.acceptOffers ? t.consignments.offersAccepted : t.consignments.offersNotAccepted}
+            />
           ) : null}
         </View>
 
         <View style={styles.box}>
-          <AppText variant="label">The Piece</AppText>
-          <DetailRow label="Category" value={consignment.category} />
-          <DetailRow label="Size" value={consignment.size} />
-          <DetailRow label="Condition" value={consignment.condition} />
-          <DetailRow label="Material" value={consignment.material} />
-          <DetailRow label="Color" value={consignment.color} />
-          <DetailRow label="Year / Collection" value={consignment.yearCollection} />
-          <DetailRow label="Authentication Details" value={consignment.serialNumber} />
-          <DetailRow label="Original Packaging" value={consignment.packaging} />
-          <DetailRow label="Additional Notes" value={consignment.notes} />
+          <AppText variant="label">{t.consignment.thePiece}</AppText>
+          <DetailRow label={t.consignment.category} value={consignment.category} />
+          <DetailRow label={t.consignment.size} value={consignment.size} />
+          <DetailRow label={t.consignment.condition} value={consignment.condition} />
+          <DetailRow label={t.consignment.material} value={consignment.material} />
+          <DetailRow label={t.consignment.color} value={consignment.color} />
+          <DetailRow label={t.consignment.yearCollection} value={consignment.yearCollection} />
+          <DetailRow label={t.consignment.serialNumber} value={consignment.serialNumber} />
+          <DetailRow label={t.consignment.packaging} value={consignment.packaging} />
+          <DetailRow label={t.consignment.notes} value={consignment.notes} />
         </View>
       </ScrollView>
     </Screen>

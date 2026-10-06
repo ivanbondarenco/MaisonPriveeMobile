@@ -8,6 +8,7 @@ import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
 import { useAuth } from "@/context/AuthContext";
 import { env } from "@/lib/env";
+import { useT } from "@/i18n";
 import { colors, spacing } from "@/theme";
 
 const priceFormatter = new Intl.NumberFormat("en-US", {
@@ -15,10 +16,8 @@ const priceFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
 });
 
-const SHARE_MESSAGE =
-  "Consign your pieces with Maison Privée Atelier. We both get $125 in site credit once your first consignment is paid out.";
-
 export function ReferralScreen() {
+  const t = useT();
   const router = useRouter();
   const { user } = useAuth();
 
@@ -32,12 +31,12 @@ export function ReferralScreen() {
     return (
       <Screen style={styles.centered}>
         <AppText variant="display" style={styles.centeredTitle}>
-          Refer a Seller
+          {t.referral.signInTitle}
         </AppText>
         <AppText variant="body" style={styles.centeredText}>
-          Sign in to get your personal referral link.
+          {t.referral.signInPrompt}
         </AppText>
-        <Button label="Sign In" onPress={() => router.push("/(auth)/login")} style={styles.centeredButton} />
+        <Button label={t.common.signIn} onPress={() => router.push("/(auth)/login")} style={styles.centeredButton} />
       </Screen>
     );
   }
@@ -50,29 +49,28 @@ export function ReferralScreen() {
   // expo-sharing only takes local file URIs, so a link/text share goes through
   // React Native's own Share sheet instead.
   const handleShare = () =>
-    Share.share({ message: `${SHARE_MESSAGE}\n${referralLink}`, url: referralLink });
+    Share.share({ message: `${t.referral.shareMessage}\n${referralLink}`, url: referralLink });
 
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
-        <AppText variant="caption">Real Friends</AppText>
+        <AppText variant="caption">{t.referral.eyebrow}</AppText>
         <AppText variant="display" style={styles.title}>
-          Earn $125 For You & $125 For Them
+          {t.referral.title}
         </AppText>
         <AppText variant="body" style={styles.subtitle}>
-          Share your invitation with a friend. Once they complete their first paid consignment with
-          Maison Privée Atelier, you both receive $125 in site credit.
+          {t.referral.intro}
         </AppText>
 
         <View style={styles.statsRow}>
           <View style={styles.stat}>
-            <AppText variant="caption">Sellers Referred</AppText>
+            <AppText variant="caption">{t.referral.sellersReferred}</AppText>
             <AppText variant="display" style={styles.statValue}>
               {isLoading ? "—" : (stats?.referredCount ?? 0)}
             </AppText>
           </View>
           <View style={styles.stat}>
-            <AppText variant="caption">Credit Earned</AppText>
+            <AppText variant="caption">{t.referral.creditEarned}</AppText>
             <AppText variant="display" style={styles.statValue}>
               {isLoading ? "—" : `$${priceFormatter.format(stats?.totalEarned ?? 0)}`}
             </AppText>
@@ -80,7 +78,7 @@ export function ReferralScreen() {
         </View>
 
         <AppText variant="label" style={styles.linkLabel}>
-          Your Invitation Link
+          {t.referral.yourLink}
         </AppText>
         <View style={styles.linkBox}>
           <AppText variant="body" selectable style={styles.link}>
@@ -88,9 +86,9 @@ export function ReferralScreen() {
           </AppText>
         </View>
 
-        <Button label="Share Invitation" onPress={handleShare} style={styles.shareButton} />
+        <Button label={t.referral.share} onPress={handleShare} style={styles.shareButton} />
         <AppText variant="body" style={styles.footnote}>
-          Credit is issued once your friend&apos;s first consignment is paid out.
+          {t.referral.footnote}
         </AppText>
       </ScrollView>
     </Screen>

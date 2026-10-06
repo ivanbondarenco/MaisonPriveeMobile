@@ -23,6 +23,7 @@ import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
 import { TextField } from "@/components/TextField";
 import { useCart } from "@/context/CartContext";
+import { fill, useT } from "@/i18n";
 import { ApiError } from "@/lib/apiClient";
 import { colors, spacing } from "@/theme";
 
@@ -32,6 +33,7 @@ export function CheckoutScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { lines, subtotal, clear } = useCart();
+  const t = useT();
 
   const [recipientName, setRecipientName] = useState("");
   const [recipientPhone, setRecipientPhone] = useState("");
@@ -110,9 +112,9 @@ export function CheckoutScreen() {
         items: lines.map((l) => ({ productId: l.product.id, quantity: l.quantity })),
       });
       setRates(fetched);
-      if (fetched.length === 0) setFormError("No shipping options available for this address.");
+      if (fetched.length === 0) setFormError(t.checkout.noRates);
     } catch (error) {
-      setFormError(error instanceof ApiError ? error.message : "Couldn't calculate shipping.");
+      setFormError(error instanceof ApiError ? error.message : t.checkout.ratesError);
     } finally {
       setIsLoadingRates(false);
     }
@@ -127,7 +129,7 @@ export function CheckoutScreen() {
       setCouponDiscount(result.discount);
     } catch (error) {
       setCouponDiscount(0);
-      setCouponError(error instanceof ApiError ? error.message : "Invalid coupon.");
+      setCouponError(error instanceof ApiError ? error.message : t.checkout.invalidCoupon);
     } finally {
       setIsValidatingCoupon(false);
     }
@@ -140,7 +142,7 @@ export function CheckoutScreen() {
       const uploaded = await uploadTransferProof(uri, mimeType);
       setProofUrl(uploaded.url);
     } catch (error) {
-      setFormError(error instanceof ApiError ? error.message : "Couldn't upload the receipt.");
+      setFormError(error instanceof ApiError ? error.message : t.checkout.uploadFailed);
     } finally {
       setIsUploadingProof(false);
     }
@@ -149,7 +151,7 @@ export function CheckoutScreen() {
   const handlePickProofPhoto = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      setFormError("Photo library access is required to attach your transfer receipt.");
+      setFormError(t.checkout.receiptPermission);
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -174,11 +176,11 @@ export function CheckoutScreen() {
     const address = validateAddress();
     if (!address) return;
     if (!selectedRate) {
-      setFormError("Choose a shipping option before placing your order.");
+      setFormError(t.checkout.chooseShipping);
       return;
     }
     if (lines.length === 0) {
-      setFormError("Your cart is empty.");
+      setFormError(t.checkout.emptyCart);
       return;
     }
 
@@ -211,7 +213,7 @@ export function CheckoutScreen() {
       clear();
       router.replace("/orders");
     } catch (error) {
-      setFormError(error instanceof ApiError ? error.message : "Couldn't place your order.");
+      setFormError(error instanceof ApiError ? error.message : t.checkout.orderFailed);
     } finally {
       setIsSubmitting(false);
     }
@@ -222,18 +224,18 @@ export function CheckoutScreen() {
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <AppText variant="label" style={styles.sectionLabel}>
-            Shipping Address
+            {t.checkout.shippingAddress}
           </AppText>
-          <TextField label="Recipient Name" value={recipientName} onChangeText={setRecipientName} error={fieldErrors.recipientName} />
-          <TextField label="Phone" value={recipientPhone} onChangeText={setRecipientPhone} keyboardType="phone-pad" error={fieldErrors.recipientPhone} />
-          <TextField label="Tax ID (optional)" value={recipientTaxId} onChangeText={setRecipientTaxId} />
-          <TextField label="Address Line 1" value={line1} onChangeText={setLine1} error={fieldErrors.line1} />
-          <TextField label="Address Line 2 (optional)" value={line2} onChangeText={setLine2} />
-          <TextField label="City" value={city} onChangeText={setCity} error={fieldErrors.city} />
-          <TextField label="State / Province" value={state} onChangeText={setState} error={fieldErrors.state} />
-          <TextField label="Postal Code" value={postalCode} onChangeText={setPostalCode} error={fieldErrors.postalCode} />
+          <TextField label={t.checkout.recipientName} value={recipientName} onChangeText={setRecipientName} error={fieldErrors.recipientName} />
+          <TextField label={t.checkout.phone} value={recipientPhone} onChangeText={setRecipientPhone} keyboardType="phone-pad" error={fieldErrors.recipientPhone} />
+          <TextField label={t.checkout.taxId} value={recipientTaxId} onChangeText={setRecipientTaxId} />
+          <TextField label={t.checkout.line1} value={line1} onChangeText={setLine1} error={fieldErrors.line1} />
+          <TextField label={t.checkout.line2} value={line2} onChangeText={setLine2} />
+          <TextField label={t.checkout.city} value={city} onChangeText={setCity} error={fieldErrors.city} />
+          <TextField label={t.checkout.state} value={state} onChangeText={setState} error={fieldErrors.state} />
+          <TextField label={t.checkout.postalCode} value={postalCode} onChangeText={setPostalCode} error={fieldErrors.postalCode} />
           <TextField
-            label="Country (2-letter code)"
+            label={t.checkout.country}
             value={country}
             onChangeText={(v) => setCountry(v.toUpperCase())}
             autoCapitalize="characters"
@@ -242,7 +244,7 @@ export function CheckoutScreen() {
           />
 
           <Button
-            label="Calculate Shipping"
+            label={t.checkout.calculateShipping}
             variant="outline"
             onPress={handleGetRates}
             loading={isLoadingRates}
@@ -261,7 +263,9 @@ export function CheckoutScreen() {
                   >
                     <View>
                       <AppText variant="body">{rate.method}</AppText>
-                      <AppText variant="caption">{rate.estimatedDays} day(s)</AppText>
+                      <AppText variant="caption">
+                        {rate.estimatedDays} {t.checkout.days}
+                      </AppText>
                     </View>
                     <AppText variant="bodyMedium">{rate.currency} {priceFormatter.format(rate.price)}</AppText>
                   </Pressable>
@@ -271,29 +275,31 @@ export function CheckoutScreen() {
           ) : null}
 
           <AppText variant="label" style={styles.sectionLabel}>
-            Coupon
+            {t.checkout.coupon}
           </AppText>
           <View style={styles.couponRow}>
             <View style={styles.couponInput}>
-              <TextField label="Code" value={couponCode} onChangeText={setCouponCode} autoCapitalize="characters" />
+              <TextField label={t.checkout.code} value={couponCode} onChangeText={setCouponCode} autoCapitalize="characters" />
             </View>
-            <Button label="Apply" variant="outline" onPress={handleApplyCoupon} loading={isValidatingCoupon} style={styles.couponButton} />
+            <Button label={t.checkout.apply} variant="outline" onPress={handleApplyCoupon} loading={isValidatingCoupon} style={styles.couponButton} />
           </View>
           {couponError ? <AppText variant="caption" style={styles.errorText}>{couponError}</AppText> : null}
           {couponDiscount > 0 ? (
-            <AppText variant="body" style={styles.couponApplied}>Discount applied: -USD {priceFormatter.format(couponDiscount)}</AppText>
+            <AppText variant="body" style={styles.couponApplied}>
+              {t.checkout.discountApplied} -USD {priceFormatter.format(couponDiscount)}
+            </AppText>
           ) : null}
 
           {creditBalance > 0 ? (
             <>
               <AppText variant="label" style={styles.sectionLabel}>
-                Site Credit
+                {t.checkout.siteCredit}
               </AppText>
               <View style={styles.creditRow}>
                 <View style={styles.creditText}>
-                  <AppText variant="body">Apply my site credit</AppText>
+                  <AppText variant="body">{t.checkout.applyCredit}</AppText>
                   <AppText variant="caption" style={styles.proofHint}>
-                    Available: USD {priceFormatter.format(creditBalance)}
+                    {t.checkout.available} USD {priceFormatter.format(creditBalance)}
                   </AppText>
                 </View>
                 <Switch
@@ -305,7 +311,7 @@ export function CheckoutScreen() {
               </View>
               {creditApplied > 0 ? (
                 <AppText variant="body" style={styles.couponApplied}>
-                  USD {priceFormatter.format(creditApplied)} will be deducted from your total.
+                  {fill(t.checkout.creditDeducted, { amount: `USD ${priceFormatter.format(creditApplied)}` })}
                 </AppText>
               ) : null}
             </>
@@ -314,21 +320,21 @@ export function CheckoutScreen() {
           {fullyCoveredByCredit ? null : (
             <>
               <AppText variant="label" style={styles.sectionLabel}>
-                Bank Transfer Receipt
+                {t.checkout.receipt}
               </AppText>
               {proofUrl ? (
-                <Button label="Receipt Uploaded ✓" variant="outline" onPress={handlePickProofPhoto} style={styles.sectionButton} />
+                <Button label={t.checkout.receiptUploaded} variant="outline" onPress={handlePickProofPhoto} style={styles.sectionButton} />
               ) : (
                 <View style={styles.proofRow}>
                   <Button
-                    label="Photo"
+                    label={t.common.photo}
                     variant="outline"
                     onPress={handlePickProofPhoto}
                     loading={isUploadingProof}
                     style={styles.proofButton}
                   />
                   <Button
-                    label="PDF"
+                    label={t.common.pdf}
                     variant="outline"
                     onPress={handlePickProofDocument}
                     loading={isUploadingProof}
@@ -337,46 +343,46 @@ export function CheckoutScreen() {
                 </View>
               )}
               <AppText variant="caption" style={styles.proofHint}>
-                You can also send it separately after placing the order.
+                {t.checkout.receiptHint}
               </AppText>
             </>
           )}
 
           <View style={styles.summary}>
             <View style={styles.summaryRow}>
-              <AppText variant="label">Subtotal</AppText>
+              <AppText variant="label">{t.checkout.subtotal}</AppText>
               <AppText variant="body">USD {priceFormatter.format(subtotal)}</AppText>
             </View>
             <View style={styles.summaryRow}>
-              <AppText variant="label">Shipping</AppText>
+              <AppText variant="label">{t.checkout.shipping}</AppText>
               <AppText variant="body">USD {priceFormatter.format(shippingCost)}</AppText>
             </View>
             {couponDiscount > 0 ? (
               <View style={styles.summaryRow}>
-                <AppText variant="label">Discount</AppText>
+                <AppText variant="label">{t.checkout.discount}</AppText>
                 <AppText variant="body">-USD {priceFormatter.format(couponDiscount)}</AppText>
               </View>
             ) : null}
             {creditApplied > 0 ? (
               <View style={styles.summaryRow}>
-                <AppText variant="label">Site Credit</AppText>
+                <AppText variant="label">{t.checkout.siteCredit}</AppText>
                 <AppText variant="body">-USD {priceFormatter.format(creditApplied)}</AppText>
               </View>
             ) : null}
             <View style={styles.summaryRow}>
-              <AppText variant="bodyMedium">{creditApplied > 0 ? "To Pay" : "Total"}</AppText>
+              <AppText variant="bodyMedium">{creditApplied > 0 ? t.checkout.toPay : t.checkout.total}</AppText>
               <AppText variant="bodyMedium">USD {priceFormatter.format(amountToPay)}</AppText>
             </View>
           </View>
           {fullyCoveredByCredit ? (
             <AppText variant="caption" style={styles.proofHint}>
-              Your site credit covers this order — no transfer needed.
+              {t.checkout.creditCovers}
             </AppText>
           ) : null}
 
           {formError ? <AppText variant="body" style={styles.errorText}>{formError}</AppText> : null}
 
-          <Button label="Place Order" onPress={handlePlaceOrder} loading={isSubmitting} style={styles.placeOrderButton} />
+          <Button label={t.checkout.placeOrder} onPress={handlePlaceOrder} loading={isSubmitting} style={styles.placeOrderButton} />
           {isUploadingProof ? <ActivityIndicator color={colors.primary} style={styles.spinner} /> : null}
         </ScrollView>
       </KeyboardAvoidingView>

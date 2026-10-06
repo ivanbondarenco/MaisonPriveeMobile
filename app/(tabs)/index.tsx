@@ -1,5 +1,5 @@
-import { CatalogScreen } from "@/features/catalog/CatalogScreen";
+import { HomeScreen } from "@/features/home/HomeScreen";
 
-export default function CatalogRoute() {
-  return <CatalogScreen />;
+export default function HomeRoute() {
+  return <HomeScreen />;
 }

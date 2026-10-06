@@ -81,10 +81,31 @@ Criterio de salida de esta fase: un usuario puede loguearse, navegar el catálog
 
 ## Fase 4 — Membresía y pulido
 
-1. Suscripción a `MembershipPlan` (`GET /api/memberships/plans`, flujo de pago igual que Fase 1 punto 4).
-2. i18n: portar los strings de los 6 locales (en/es/pt/fr/zh/ar) que ya existen en el storefront — buscar si están en JSON separado o hardcodeados en componentes antes de decidir el mecanismo de extracción.
-3. Deep linking + Universal Links: configurar `apple-app-site-association` servido desde el dominio del backend/CDN (necesario para que los links de referido y de confirmación de pago abran la app directo en vez del navegador).
-4. QA en dispositivo real vía TestFlight (ver alternativas a hardware Apple abajo).
+1. Suscripción a `MembershipPlan` (`GET /api/memberships/plans?locale=`, `GET /api/memberships/me`, `POST /api/memberships/subscribe` / `cancel`). Pago por transferencia y/o site credit, igual que el checkout de productos: el backend no tiene flujo de tarjeta para membresías.
+2. i18n: **en/es/pt/fr/zh — sin árabe** (el storefront tiene 6 locales en `src/lib/i18n.ts`, un objeto anidado de 4115 líneas; el español se portó de ahí manteniendo el voseo). Diccionario propio en `src/i18n/` (`en.ts` como fuente de verdad; `es.ts`/`pt.ts`/`fr.ts`/`zh.ts` tipados contra él, así una clave faltante es error de compilación), `I18nProvider` + `useT()`/`useI18n()`, idioma persistido en SecureStore (`mp_locale`) con default según el idioma del dispositivo, selector en el perfil. Fechas y montos salen por `dateLocale` (en-US / es-AR / pt-BR / fr-FR / zh-CN). Pendiente solo `ar`: es RTL y obliga a revisar todos los layouts, no es solo traducir.
+3. Deep linking + Universal Links — **implementado en código, falta configurar**:
+   - **App**: `ios.associatedDomains` en `app.json` (`maisonpriveeatelier.com` y `www.`). `app/+native-intent.tsx` + `src/lib/deepLinks.ts` reescriben las rutas web en español a las rutas de la app: `/products/:id` → `/product/:id`, `/vende` → `/sell`, `/refer-a-seller` → `/refer`, `/mis-pedidos` → `/orders`, `/membership` y `/subscription` → `/membership`, `/profile?tab=purchases|consignments|subscription|wishlist` → la pantalla equivalente, `/checkout` → `/cart`. El scheme propio `maisonprivee://order/:id/confirmed` (retorno del pago con tarjeta) va a `/orders/:id`.
+   - **Referidos**: un `?ref=` en cualquier link entrante se guarda en SecureStore (`mp_ref`, igual que el `localStorage` del storefront) y se manda como `referredBy` en el registro; después se borra.
+   - **Storefront**: `storefront/src/app/.well-known/apple-app-site-association/route.ts` sirve el AASA como JSON. Solo se reclaman las rutas que tienen pantalla nativa; admin y checkout quedan en la web. Devuelve 404 mientras no exista `APPLE_TEAM_ID`.
+   - **Pendiente (manual)**: (a) cargar `APPLE_TEAM_ID` (developer.apple.com → Membership) en el servicio storefront de Easypanel y redeployar; (b) verificar que `https://maisonpriveeatelier.com/.well-known/apple-app-site-association` y la versión con `www.` respondan 200 sin redirect (si `www` redirige al dominio sin `www`, Apple no sigue el redirect: sacar `www` de `associatedDomains`); (c) el App ID tiene que tener la capability *Associated Domains*: EAS la habilita sola en el primer build si maneja las credenciales. iOS descarga el AASA al instalar la app, así que después de corregirlo hay que reinstalar.
+4. QA en dispositivo real vía TestFlight — **`eas.json` listo, solo para iOS**: `development` (simulador), `preview` (distribución interna por ad hoc, requiere registrar el UDID del iPhone con `eas device:create`) y `production` (App Store/TestFlight, `autoIncrement` del build number con `appVersionSource: remote`). La URL de la API de producción está en `build.base.env` porque `.env` está en `.gitignore` y EAS no lo sube. `ITSAppUsesNonExemptEncryption: false` en `app.json` evita la pregunta de export compliance en cada build.
+   Pasos (requieren la cuenta Apple Developer aprobada):
+   ```
+   eas login
+   eas init                       # crea el proyecto EAS y escribe extra.eas.projectId en app.json (lo necesitan los push)
+   eas credentials -p ios         # certificados + perfil, y subir la APNs Key (.p8) para los push
+   eas build -p ios --profile production
+   eas submit -p ios --latest     # sube a App Store Connect → TestFlight
+   ```
+   Checklist de QA en el iPhone:
+   - Login/registro, refresh de sesión tras 30+ min en background, logout.
+   - Catálogo con filtros, detalle, wishlist y carrito (persistencia al cerrar la app).
+   - Checkout por transferencia con comprobante (cámara y galería), cupón y site credit.
+   - Mis pedidos y detalle; push cuando el admin cambia el estado de la orden.
+   - Consignación con fotos, mis consignaciones, ofertas recibidas (aceptar/rechazar).
+   - Membresía: ver planes, suscribirse por transferencia, estado pendiente/activo, cancelar.
+   - Cambio de idioma en los 5 locales, sin textos cortados en pantallas chicas (iPhone SE).
+   - Universal Links: abrir desde Notas o Mensajes (no desde Safari escribiendo la URL) `/products/<id>`, `/vende?ref=<userId>` y registrarse para confirmar que el referido queda atribuido, y `/mis-pedidos`.
 
 ## Alternativas a no tener hardware Apple (aplican en todas las fases)
 

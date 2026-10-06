@@ -2,6 +2,7 @@ import { Image } from "expo-image";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import type { Product } from "@/api/types";
+import { useT } from "@/i18n";
 import { colors, spacing } from "@/theme";
 import { AppText } from "./AppText";
 
@@ -11,7 +12,8 @@ const priceFormatter = new Intl.NumberFormat("en-US", {
 });
 
 export function ProductCard({ product, onPress }: { product: Product; onPress: () => void }) {
-  const badge = product.isReserved ? "Reserved" : product.isNew ? "New In" : null;
+  const t = useT();
+  const badge = product.isReserved ? t.productCard.reserved : product.isNew ? t.productCard.newIn : null;
   // Mirrors the storefront's ProductCard: the shared order-creation route
   // doesn't always flip isSoldOut when stock hits 0 for older data, so fall
   // back to the raw stock count too.
@@ -36,7 +38,7 @@ export function ProductCard({ product, onPress }: { product: Product; onPress: (
         {isSoldOut ? (
           <View style={styles.soldOutOverlay}>
             <AppText variant="label" style={styles.soldOutText}>
-              Sold Out
+              {t.productCard.soldOut}
             </AppText>
           </View>
         ) : null}

@@ -15,36 +15,32 @@ import { SegmentedControl } from "@/components/SegmentedControl";
 import { TextField } from "@/components/TextField";
 import { useAuth } from "@/context/AuthContext";
 import { ApiError } from "@/lib/apiClient";
+import { fill, useT } from "@/i18n";
 import { colors, spacing } from "@/theme";
 
-// Same four tiers the storefront's ConsignFormModal offers.
+// Same four tiers the storefront's ConsignFormModal offers: the values are what
+// the backend stores, the labels come from the dictionary.
 const CONDITIONS = ["New", "Excellent", "Very Good", "Good"] as const;
 type Condition = (typeof CONDITIONS)[number];
-
-const SUBMISSION_TYPES = [
-  { value: "CONSIGNMENT" as const, label: "Consignment" },
-  { value: "INSTANT_LIQUIDITY" as const, label: "Instant Liquidity" },
-];
-
-const PAYOUT_METHODS = [
-  { value: "CASH" as const, label: "Cash" },
-  { value: "CREDIT" as const, label: "Site Credit" },
-];
-
-const OFFER_CHOICES = [
-  { value: "yes" as const, label: "Accept Offers" },
-  { value: "no" as const, label: "No Offers" },
-];
-
-const INSTANT_LIQUIDITY_NOTE =
-  "Submit your piece for review. Our team coordinates an in-person appraisal at Maison Privée Atelier and agrees the final price with you directly.";
-
-const CONSIGNMENT_NOTE = "Please provide the following details for evaluation.";
 
 export function ConsignmentFormScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const t = useT();
+
+  const submissionTypes = [
+    { value: "CONSIGNMENT" as const, label: t.consignment.consignmentType },
+    { value: "INSTANT_LIQUIDITY" as const, label: t.consignment.instantLiquidity },
+  ];
+  const payoutMethods = [
+    { value: "CASH" as const, label: t.consignment.cash },
+    { value: "CREDIT" as const, label: t.consignment.siteCredit },
+  ];
+  const offerChoices = [
+    { value: "yes" as const, label: t.consignment.acceptOffers },
+    { value: "no" as const, label: t.consignment.noOffers },
+  ];
 
   const [submissionType, setSubmissionType] = useState<"CONSIGNMENT" | "INSTANT_LIQUIDITY">("CONSIGNMENT");
   const [payoutMethod, setPayoutMethod] = useState<"CASH" | "CREDIT">("CASH");
@@ -76,7 +72,7 @@ export function ConsignmentFormScreen() {
     if (remainingPhotos <= 0) return;
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      setFormError("Photo library access is required to attach photos of your piece.");
+      setFormError(t.consignment.libraryPermission);
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -96,7 +92,7 @@ export function ConsignmentFormScreen() {
     if (remainingPhotos <= 0) return;
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      setFormError("Camera access is required to photograph your piece.");
+      setFormError(t.consignment.cameraPermission);
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ mediaTypes: "images", quality: 0.8 });
@@ -149,7 +145,7 @@ export function ConsignmentFormScreen() {
       setIsSent(true);
     } catch (error) {
       setFormError(
-        error instanceof ApiError ? error.message : "Couldn't send your submission. Please try again."
+        error instanceof ApiError ? error.message : t.consignment.submitFailed
       );
     } finally {
       setIsSubmitting(false);
@@ -160,15 +156,15 @@ export function ConsignmentFormScreen() {
     return (
       <Screen style={styles.successScreen}>
         <AppText variant="caption" style={styles.successEyebrow}>
-          Submission Received
+          {t.consignment.sentEyebrow}
         </AppText>
         <AppText variant="display" style={styles.successTitle}>
-          Thank You
+          {t.consignment.sentTitle}
         </AppText>
         <AppText variant="body" style={styles.successBody}>
-          Our team will review your submission and revert with a valuation and next steps.
+          {t.consignment.sentBody}
         </AppText>
-        <Button label="Done" onPress={() => router.back()} style={styles.successButton} />
+        <Button label={t.common.done} onPress={() => router.back()} style={styles.successButton} />
       </Screen>
     );
   }
@@ -177,27 +173,29 @@ export function ConsignmentFormScreen() {
     <Screen>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <AppText variant="caption">Maison Privée Atelier</AppText>
+          <AppText variant="caption">{t.consignment.eyebrow}</AppText>
           <AppText variant="display" style={styles.heading}>
-            Private Submission
+            {t.consignment.title}
           </AppText>
 
           <SegmentedControl
-            options={SUBMISSION_TYPES}
+            options={submissionTypes}
             value={submissionType}
             onChange={setSubmissionType}
           />
           <AppText variant="body" style={styles.typeNote}>
-            {submissionType === "INSTANT_LIQUIDITY" ? INSTANT_LIQUIDITY_NOTE : CONSIGNMENT_NOTE}
+            {submissionType === "INSTANT_LIQUIDITY"
+              ? t.consignment.instantLiquidityNote
+              : t.consignment.consignmentNote}
           </AppText>
 
           <AppText variant="label" style={styles.sectionLabel}>
-            Your Details
+            {t.consignment.yourDetails}
           </AppText>
           {/* Locked to the signed-in account, like the storefront form: the backend
               links the submission to the user whose email matches. */}
           <TextField
-            label="Name"
+            label={t.consignment.name}
             value={name}
             onChangeText={setName}
             editable={!user?.name}
@@ -205,7 +203,7 @@ export function ConsignmentFormScreen() {
             error={fieldErrors.name}
           />
           <TextField
-            label="Email"
+            label={t.consignment.email}
             value={email}
             onChangeText={setEmail}
             editable={!user?.email}
@@ -216,86 +214,100 @@ export function ConsignmentFormScreen() {
           />
 
           <AppText variant="label" style={styles.sectionLabel}>
-            The Piece
+            {t.consignment.thePiece}
           </AppText>
           <TextField
-            label="Brand"
+            label={t.consignment.brand}
             value={brand}
             onChangeText={setBrand}
-            placeholder="e.g. Hermès, Chanel, Rolex"
+            placeholder={t.consignment.brandPlaceholder}
             error={fieldErrors.brand}
           />
           <TextField
-            label="Category"
+            label={t.consignment.category}
             value={category}
             onChangeText={setCategory}
-            placeholder="Handbag, Shoes, Watch, Jewelry..."
+            placeholder={t.consignment.categoryPlaceholder}
           />
-          <TextField label="Size" value={size} onChangeText={setSize} placeholder="e.g. 30cm, EU 42" />
+          <TextField
+            label={t.consignment.size}
+            value={size}
+            onChangeText={setSize}
+            placeholder={t.consignment.sizePlaceholder}
+          />
 
           <AppText variant="caption" style={styles.inlineLabel}>
-            Condition
+            {t.consignment.condition}
           </AppText>
           <SegmentedControl
-            options={CONDITIONS.map((value) => ({ value, label: value }))}
+            options={CONDITIONS.map((value) => ({ value, label: t.consignment.conditions[value] }))}
             value={condition as Condition}
             onChange={setCondition}
             wrap
           />
 
           <View style={styles.spacer} />
-          <TextField label="Material" value={material} onChangeText={setMaterial} placeholder="e.g. Leather, Gold" />
-          <TextField label="Color" value={color} onChangeText={setColor} placeholder="e.g. Black, Gold, Etoupe" />
           <TextField
-            label="Year / Collection"
+            label={t.consignment.material}
+            value={material}
+            onChangeText={setMaterial}
+            placeholder={t.consignment.materialPlaceholder}
+          />
+          <TextField
+            label={t.consignment.color}
+            value={color}
+            onChangeText={setColor}
+            placeholder={t.consignment.colorPlaceholder}
+          />
+          <TextField
+            label={t.consignment.yearCollection}
             value={yearCollection}
             onChangeText={setYearCollection}
-            placeholder="If known"
+            placeholder={t.consignment.yearCollectionPlaceholder}
           />
           <TextField
-            label="Authentication Details"
+            label={t.consignment.serialNumber}
             value={serialNumber}
             onChangeText={setSerialNumber}
-            placeholder="Serial number, stamps, etc."
+            placeholder={t.consignment.serialNumberPlaceholder}
           />
           <TextField
-            label="Original Packaging"
+            label={t.consignment.packaging}
             value={packaging}
             onChangeText={setPackaging}
-            placeholder="Box, Dust Bag, Card, Receipt"
+            placeholder={t.consignment.packagingPlaceholder}
           />
           <TextField
-            label="Price Expectation"
+            label={t.consignment.priceExpectation}
             value={priceExpectation}
             onChangeText={setPriceExpectation}
-            placeholder="Your expected price (USD)"
+            placeholder={t.consignment.priceExpectationPlaceholder}
           />
           <TextField
-            label="Additional Notes"
+            label={t.consignment.notes}
             value={notes}
             onChangeText={setNotes}
-            placeholder="Any additional details about the piece..."
+            placeholder={t.consignment.notesPlaceholder}
             multiline
             style={styles.notesInput}
           />
 
           <AppText variant="label" style={styles.sectionLabel}>
-            Photos
+            {t.consignment.photos}
           </AppText>
           <AppText variant="body" style={styles.hint}>
-            Front, back, interior, logo/branding, details and serial number (if applicable). Up to{" "}
-            {MAX_CONSIGNMENT_PHOTOS} photos.
+            {fill(t.consignment.photosHint, { max: MAX_CONSIGNMENT_PHOTOS })}
           </AppText>
           <View style={styles.photoButtons}>
             <Button
-              label="Take Photo"
+              label={t.consignment.takePhoto}
               variant="outline"
               onPress={handleTakePhoto}
               disabled={remainingPhotos <= 0}
               style={styles.photoButton}
             />
             <Button
-              label="From Library"
+              label={t.consignment.fromLibrary}
               variant="outline"
               onPress={handlePickFromLibrary}
               disabled={remainingPhotos <= 0}
@@ -310,7 +322,7 @@ export function ConsignmentFormScreen() {
                   <Image source={{ uri }} style={styles.thumbnail} contentFit="cover" />
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Remove photo"
+                    accessibilityLabel={t.consignment.removePhoto}
                     onPress={() => removePhoto(uri)}
                     style={styles.removePhoto}
                     hitSlop={8}
@@ -323,13 +335,13 @@ export function ConsignmentFormScreen() {
           ) : null}
 
           <AppText variant="label" style={styles.sectionLabel}>
-            Payout Method
+            {t.consignment.payoutMethod}
           </AppText>
           <AppText variant="body" style={styles.hint}>
-            Choose how you would like to be paid.
+            {t.consignment.payoutMethodHint}
           </AppText>
           <SegmentedControl
-            options={PAYOUT_METHODS}
+            options={payoutMethods}
             value={payoutMethod}
             onChange={setPayoutMethod}
             accent={payoutMethod === "CREDIT"}
@@ -338,13 +350,13 @@ export function ConsignmentFormScreen() {
           {submissionType === "CONSIGNMENT" ? (
             <>
               <AppText variant="label" style={styles.sectionLabel}>
-                Private Offers
+                {t.consignment.privateOffers}
               </AppText>
               <AppText variant="body" style={styles.hint}>
-                Allow other Maison Privée Atelier clients to send you private offers for this piece.
+                {t.consignment.privateOffersHint}
               </AppText>
               <SegmentedControl
-                options={OFFER_CHOICES}
+                options={offerChoices}
                 value={acceptOffers ? "yes" : "no"}
                 onChange={(value) => setAcceptOffers(value === "yes")}
                 accent={acceptOffers}
@@ -359,15 +371,19 @@ export function ConsignmentFormScreen() {
           ) : null}
 
           <Button
-            label={submissionType === "INSTANT_LIQUIDITY" ? "Request Instant Liquidity" : "Submit for Review"}
+            label={
+              submissionType === "INSTANT_LIQUIDITY"
+                ? t.consignment.requestInstantLiquidity
+                : t.consignment.submitForReview
+            }
             onPress={handleSubmit}
             loading={isSubmitting}
             style={styles.submitButton}
           />
           <AppText variant="body" style={styles.footerNote}>
             {submissionType === "INSTANT_LIQUIDITY"
-              ? "Our team will coordinate an in-person appraisal and agree the final price with you."
-              : "Your submission will be reviewed discreetly by our team."}
+              ? t.consignment.footerInstantLiquidity
+              : t.consignment.footerConsignment}
           </AppText>
         </ScrollView>
       </KeyboardAvoidingView>

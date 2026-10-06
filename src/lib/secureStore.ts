@@ -4,6 +4,7 @@ const AUTH_TOKEN_KEY = "mp_auth_token";
 const AUTH_REFRESH_TOKEN_KEY = "mp_auth_refresh_token";
 const AUTH_USER_KEY = "mp_auth_user";
 const CART_LINES_KEY = "mp_cart_lines";
+const LOCALE_KEY = "mp_locale";
 
 export const tokenStore = {
   get: () => SecureStore.getItemAsync(AUTH_TOKEN_KEY),
@@ -38,4 +39,21 @@ export const cartLinesStore = {
   },
   set: (lines: unknown) => SecureStore.setItemAsync(CART_LINES_KEY, JSON.stringify(lines)),
   clear: () => SecureStore.deleteItemAsync(CART_LINES_KEY),
+};
+
+// Language choice: not a secret, but SecureStore is already the app's only
+// persistence layer — no need to pull in AsyncStorage for one key.
+export const localeStore = {
+  get: () => SecureStore.getItemAsync(LOCALE_KEY),
+  set: (locale: string) => SecureStore.setItemAsync(LOCALE_KEY, locale),
+};
+
+// Referrer's user id captured from an incoming ?ref= link (same role as the
+// storefront's localStorage "mp_ref"); sent as referredBy on register, then cleared.
+const REFERRAL_KEY = "mp_ref";
+
+export const referralStore = {
+  get: () => SecureStore.getItemAsync(REFERRAL_KEY),
+  set: (ref: string) => SecureStore.setItemAsync(REFERRAL_KEY, ref),
+  clear: () => SecureStore.deleteItemAsync(REFERRAL_KEY),
 };

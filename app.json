@@ -10,7 +10,14 @@
     "backgroundColor": "#F9F8F6",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.maisonpriveeatelier.mobile"
+      "bundleIdentifier": "com.maisonpriveeatelier.mobile",
+      "associatedDomains": [
+        "applinks:maisonpriveeatelier.com",
+        "applinks:www.maisonpriveeatelier.com"
+      ],
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"

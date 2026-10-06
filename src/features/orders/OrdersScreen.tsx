@@ -6,18 +6,13 @@ import { getMyOrders } from "@/api/orders";
 import { AppText } from "@/components/AppText";
 import { Screen } from "@/components/Screen";
 import { useAuth } from "@/context/AuthContext";
+import { dateLocale, useI18n } from "@/i18n";
 import { colors, spacing } from "@/theme";
 
 const priceFormatter = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const STATUS_LABEL: Record<string, string> = {
-  PENDING: "Pending",
-  SHIPPED: "Shipped",
-  COMPLETED: "Completed",
-  CANCELLED: "Cancelled",
-};
-
 export function OrdersScreen() {
+  const { t, locale } = useI18n();
   const router = useRouter();
   const { user } = useAuth();
 
@@ -30,7 +25,7 @@ export function OrdersScreen() {
   if (!user) {
     return (
       <Screen style={styles.centered}>
-        <AppText variant="body">Sign in to see your orders.</AppText>
+        <AppText variant="body">{t.orders.signInPrompt}</AppText>
       </Screen>
     );
   }
@@ -38,7 +33,7 @@ export function OrdersScreen() {
   if (isError) {
     return (
       <Screen style={styles.centered}>
-        <AppText variant="body">Couldn't load your orders.</AppText>
+        <AppText variant="body">{t.orders.error}</AppText>
       </Screen>
     );
   }
@@ -54,7 +49,7 @@ export function OrdersScreen() {
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.centered}>
-              <AppText variant="body">No orders yet.</AppText>
+              <AppText variant="body">{t.orders.empty}</AppText>
             </View>
           ) : null
         }
@@ -62,11 +57,11 @@ export function OrdersScreen() {
           <Pressable style={styles.row} onPress={() => router.push(`/orders/${item.id}`)}>
             <View>
               <AppText variant="bodyMedium">#{item.id.slice(0, 8).toUpperCase()}</AppText>
-              <AppText variant="caption">{new Date(item.createdAt).toLocaleDateString()}</AppText>
+              <AppText variant="caption">{new Date(item.createdAt).toLocaleDateString(dateLocale[locale])}</AppText>
             </View>
             <View style={styles.rowRight}>
               <AppText variant="caption" style={styles.status}>
-                {STATUS_LABEL[item.status] ?? item.status}
+                {t.orders.status[item.status as keyof typeof t.orders.status] ?? item.status}
               </AppText>
               <AppText variant="body">USD {priceFormatter.format(item.totalAmount)}</AppText>
             </View>

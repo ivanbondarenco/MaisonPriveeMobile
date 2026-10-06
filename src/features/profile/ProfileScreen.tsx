@@ -4,13 +4,27 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
+import { SegmentedControl } from "@/components/SegmentedControl";
 import { useAuth } from "@/context/AuthContext";
+import { LOCALES, useI18n } from "@/i18n";
 import { colors, spacing } from "@/theme";
 import { SiteCreditCard } from "./SiteCreditCard";
 
 export function ProfileScreen() {
   const router = useRouter();
   const { user, isLoading, logout } = useAuth();
+  const { t, locale, setLocale } = useI18n();
+
+  // Offered signed in or not: the language shouldn't depend on having an account.
+  const languagePicker = (
+    <View style={styles.languageBlock}>
+      <AppText variant="label" style={styles.languageLabel}>
+        {t.profile.language}
+      </AppText>
+      {/* wrap: five languages never fit on one row */}
+      <SegmentedControl options={LOCALES} value={locale} onChange={setLocale} wrap />
+    </View>
+  );
 
   if (isLoading) {
     return <Screen style={styles.centered} />;
@@ -20,19 +34,20 @@ export function ProfileScreen() {
     return (
       <Screen style={styles.centered}>
         <AppText variant="display" style={styles.title}>
-          Welcome
+          {t.profile.welcome}
         </AppText>
         <AppText variant="body" style={styles.subtitle}>
-          Sign in to access your orders, wishlist and offers.
+          {t.profile.signInPrompt}
         </AppText>
         <View style={styles.actions}>
-          <Button label="Sign In" onPress={() => router.push("/(auth)/login")} />
+          <Button label={t.common.signIn} onPress={() => router.push("/(auth)/login")} />
           <Button
-            label="Create Account"
+            label={t.common.createAccount}
             variant="outline"
             onPress={() => router.push("/(auth)/register")}
           />
         </View>
+        {languagePicker}
       </Screen>
     );
   }
@@ -41,7 +56,7 @@ export function ProfileScreen() {
     <Screen>
       <ScrollView>
         <View style={styles.header}>
-          <AppText variant="caption">Signed in as</AppText>
+          <AppText variant="caption">{t.profile.signedInAs}</AppText>
           <AppText variant="display" style={styles.name}>
             {user.name}
           </AppText>
@@ -53,8 +68,20 @@ export function ProfileScreen() {
         <SiteCreditCard />
 
         <View style={styles.footerActions}>
-          <Button label="My Orders" variant="outline" onPress={() => router.push("/orders")} style={styles.ordersButton} />
-          <Button label="Sign Out" variant="outline" onPress={logout} />
+          {languagePicker}
+          <Button
+            label={t.screenTitles.membership}
+            variant="outline"
+            onPress={() => router.push("/membership")}
+            style={styles.ordersButton}
+          />
+          <Button
+            label={t.screenTitles.orders}
+            variant="outline"
+            onPress={() => router.push("/orders")}
+            style={styles.ordersButton}
+          />
+          <Button label={t.profile.signOut} variant="outline" onPress={logout} />
         </View>
       </ScrollView>
     </Screen>
@@ -96,6 +123,14 @@ const styles = StyleSheet.create({
   footerActions: {
     padding: spacing.lg,
     gap: spacing.sm,
+  },
+  languageBlock: {
+    width: "100%",
+    marginTop: spacing.xl,
+    marginBottom: spacing.sm,
+  },
+  languageLabel: {
+    marginBottom: spacing.sm,
   },
   ordersButton: {
     marginBottom: 0,

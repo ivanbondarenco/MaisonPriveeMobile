@@ -1,14 +1,6 @@
 import type { Consignment, ConsignmentStatus } from "@/api/types";
 import { colors } from "@/theme";
 
-export const STATUS_LABEL: Record<ConsignmentStatus, string> = {
-  PENDING: "Pending",
-  REVIEWING: "Reviewing",
-  ACCEPTED: "Accepted",
-  REJECTED: "Rejected",
-  PAID_OUT: "Paid Out",
-};
-
 // The storefront tints these with Tailwind's palette; here they map onto the
 // brand tokens so the list still reads as Maison Privée.
 export const STATUS_COLOR: Record<ConsignmentStatus, string> = {

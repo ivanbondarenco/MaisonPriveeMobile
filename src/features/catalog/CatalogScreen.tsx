@@ -1,16 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { SlidersHorizontal, X } from "lucide-react-native";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FlatList, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { getBrands, getFilterOptions, getProducts } from "@/api/products";
+import { AppHeader } from "@/components/AppHeader";
 import { AppText } from "@/components/AppText";
 import { Button } from "@/components/Button";
+import { DepartmentTabs } from "@/components/DepartmentTabs";
 import { ProductCard } from "@/components/ProductCard";
 import { Screen } from "@/components/Screen";
 import { TextField } from "@/components/TextField";
-import { colors, spacing } from "@/theme";
+import { useT } from "@/i18n";
+import { filterByCategory, findCategory } from "@/lib/sections";
+import { colors, fontFamily, letterSpacing, spacing } from "@/theme";
+import { useDepartments } from "./useDepartments";
 
 type DraftFilters = {
   brands: string[];
@@ -22,12 +27,28 @@ type DraftFilters = {
 
 const EMPTY_FILTERS: DraftFilters = { brands: [], sizes: [], colors: [], minPrice: "", maxPrice: "" };
 
+// Params come from the Home (and deep links): ?section=&category=&brand= narrow
+// the list, ?focus=1 opens with the search field active.
+type ShopParams = { section?: string; category?: string; brand?: string; focus?: string };
+
 export function CatalogScreen() {
+  const t = useT();
   const router = useRouter();
+  const params = useLocalSearchParams<ShopParams>();
+  const { tree, departments } = useDepartments();
   const [search, setSearch] = useState("");
+  const [sectionId, setSectionId] = useState<string | null>(params.section || null);
+  const [categoryId, setCategoryId] = useState<string | null>(params.category || null);
   const [showFilters, setShowFilters] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState<DraftFilters>(EMPTY_FILTERS);
   const [draftFilters, setDraftFilters] = useState<DraftFilters>(EMPTY_FILTERS);
+
+  // Every visit from the Home re-applies its selection, replacing what was picked here.
+  useEffect(() => {
+    setSectionId(params.section || null);
+    setCategoryId(params.category || null);
+    if (params.brand) setAppliedFilters({ ...EMPTY_FILTERS, brands: [params.brand] });
+  }, [params.section, params.category, params.brand]);
 
   const { data: brands } = useQuery({ queryKey: ["brands"], queryFn: getBrands });
   const { data: filterOptions } = useQuery({ queryKey: ["filterOptions"], queryFn: getFilterOptions });
@@ -77,40 +98,73 @@ export function CatalogScreen() {
 
   // With numColumns=2 and flex:1 cards, an odd-length last row would stretch
   // its single card to fill both columns. Pad with an invisible spacer instead.
+  // Sections and categories are narrowed on the client, like the storefront —
+  // the products endpoint has no category filter.
+  const visible = useMemo(
+    () => filterByCategory(data ?? [], tree, categoryId ?? sectionId),
+    [data, tree, categoryId, sectionId]
+  );
+
+  const subcategories = useMemo(
+    () => (sectionId ? findCategory(tree, sectionId)?.children ?? [] : []),
+    [tree, sectionId]
+  );
+
+  const selectSection = (id: string | null) => {
+    setSectionId(id);
+    setCategoryId(null);
+  };
+
   const gridData = useMemo(() => {
-    if (!data || data.length % 2 === 0) return data;
-    return [...data, null];
-  }, [data]);
+    if (visible.length % 2 === 0) return visible;
+    return [...visible, null];
+  }, [visible]);
 
   return (
     <Screen>
-      <View style={styles.header}>
-        <AppText variant="display" style={styles.logo}>
-          MAISON PRIVÉE
-        </AppText>
-        <AppText variant="labelWide" style={styles.subLogo}>
-          ATELIER
-        </AppText>
-      </View>
+      <AppHeader search={{ value: search, onChangeText: setSearch, autoFocus: params.focus === "1" }} />
+      <DepartmentTabs departments={departments} value={sectionId} onChange={selectSection} />
 
-      <View style={styles.searchWrapper}>
-        <View style={styles.searchInput}>
-          <TextField
-            label="Search"
-            placeholder="Search products, brands..."
-            value={search}
-            onChangeText={setSearch}
-            autoCorrect={false}
-            returnKeyType="search"
-          />
-        </View>
+      <View style={styles.toolbar}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.subcategoryScroll}
+          contentContainerStyle={styles.subcategories}
+        >
+          {subcategories.length > 0 ? (
+            <Pressable
+              style={[styles.chip, !categoryId && styles.chipActive]}
+              onPress={() => setCategoryId(null)}
+            >
+              <AppText variant="caption" style={[styles.chipText, !categoryId && styles.chipTextActive]}>
+                {t.home.all}
+              </AppText>
+            </Pressable>
+          ) : null}
+          {subcategories.map((category) => (
+            <Pressable
+              key={category.id}
+              style={[styles.chip, categoryId === category.id && styles.chipActive]}
+              onPress={() => setCategoryId(category.id)}
+            >
+              <AppText
+                variant="caption"
+                style={[styles.chipText, categoryId === category.id && styles.chipTextActive]}
+              >
+                {category.name}
+              </AppText>
+            </Pressable>
+          ))}
+        </ScrollView>
         <Pressable
           style={styles.filterButton}
           onPress={openFilters}
           accessibilityRole="button"
-          accessibilityLabel="Filters"
+          accessibilityLabel={t.catalog.filters}
         >
           <SlidersHorizontal size={18} color={colors.primary} strokeWidth={1.5} />
+          <AppText style={styles.filterLabel}>{t.catalog.filters}</AppText>
           {activeFilterCount > 0 ? (
             <View style={styles.filterBadge}>
               <AppText variant="caption" style={styles.filterBadgeText}>
@@ -123,11 +177,11 @@ export function CatalogScreen() {
 
       {isError ? (
         <View style={styles.centered}>
-          <AppText variant="body">Couldn't load products.</AppText>
+          <AppText variant="body">{t.catalog.error}</AppText>
         </View>
       ) : (
         <FlatList
-          data={gridData ?? []}
+          data={gridData}
           key={2}
           numColumns={2}
           keyExtractor={(item, index) => item?.id ?? `spacer-${index}`}
@@ -138,7 +192,7 @@ export function CatalogScreen() {
           ListEmptyComponent={
             !isLoading ? (
               <View style={styles.centered}>
-                <AppText variant="body">No products found.</AppText>
+                <AppText variant="body">{t.catalog.empty}</AppText>
               </View>
             ) : null
           }
@@ -158,8 +212,8 @@ export function CatalogScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
-              <AppText variant="label">Filters</AppText>
-              <Pressable onPress={() => setShowFilters(false)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close">
+              <AppText variant="label">{t.catalog.filters}</AppText>
+              <Pressable onPress={() => setShowFilters(false)} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.catalog.close}>
                 <X size={20} color={colors.primary} strokeWidth={1.5} />
               </Pressable>
             </View>
@@ -167,7 +221,7 @@ export function CatalogScreen() {
             <ScrollView contentContainerStyle={styles.modalContent}>
               {brands && brands.length > 0 ? (
                 <View style={styles.filterSection}>
-                  <AppText variant="caption" style={styles.filterSectionLabel}>Brand</AppText>
+                  <AppText variant="caption" style={styles.filterSectionLabel}>{t.catalog.brand}</AppText>
                   <View style={styles.chipRow}>
                     {brands.map((brand) => (
                       <Pressable
@@ -189,7 +243,7 @@ export function CatalogScreen() {
 
               {filterOptions && filterOptions.sizes.length > 0 ? (
                 <View style={styles.filterSection}>
-                  <AppText variant="caption" style={styles.filterSectionLabel}>Size</AppText>
+                  <AppText variant="caption" style={styles.filterSectionLabel}>{t.catalog.size}</AppText>
                   <View style={styles.chipRow}>
                     {filterOptions.sizes.map((size) => (
                       <Pressable
@@ -211,7 +265,7 @@ export function CatalogScreen() {
 
               {filterOptions && filterOptions.colors.length > 0 ? (
                 <View style={styles.filterSection}>
-                  <AppText variant="caption" style={styles.filterSectionLabel}>Color</AppText>
+                  <AppText variant="caption" style={styles.filterSectionLabel}>{t.catalog.color}</AppText>
                   <View style={styles.chipRow}>
                     {filterOptions.colors.map((color) => (
                       <Pressable
@@ -232,11 +286,11 @@ export function CatalogScreen() {
               ) : null}
 
               <View style={styles.filterSection}>
-                <AppText variant="caption" style={styles.filterSectionLabel}>Price</AppText>
+                <AppText variant="caption" style={styles.filterSectionLabel}>{t.catalog.price}</AppText>
                 <View style={styles.priceRow}>
                   <View style={styles.priceInput}>
                     <TextField
-                      label="Min"
+                      label={t.catalog.min}
                       value={draftFilters.minPrice}
                       onChangeText={(v) => setDraftFilters((c) => ({ ...c, minPrice: v.replace(/[^0-9]/g, "") }))}
                       keyboardType="numeric"
@@ -245,7 +299,7 @@ export function CatalogScreen() {
                   </View>
                   <View style={styles.priceInput}>
                     <TextField
-                      label="Max"
+                      label={t.catalog.max}
                       value={draftFilters.maxPrice}
                       onChangeText={(v) => setDraftFilters((c) => ({ ...c, maxPrice: v.replace(/[^0-9]/g, "") }))}
                       keyboardType="numeric"
@@ -257,8 +311,8 @@ export function CatalogScreen() {
             </ScrollView>
 
             <View style={styles.modalFooter}>
-              <Button label="Clear" variant="outline" onPress={handleClearFilters} style={styles.modalFooterButton} />
-              <Button label="Apply" onPress={handleApplyFilters} style={styles.modalFooterButton} />
+              <Button label={t.catalog.clear} variant="outline" onPress={handleClearFilters} style={styles.modalFooterButton} />
+              <Button label={t.catalog.apply} onPress={handleApplyFilters} style={styles.modalFooterButton} />
             </View>
           </View>
         </View>
@@ -268,43 +322,35 @@ export function CatalogScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    alignItems: "center",
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  logo: {
-    fontSize: 22,
-    letterSpacing: 2,
-  },
-  subLogo: {
-    marginTop: 2,
-    fontSize: 9,
-  },
-  searchWrapper: {
+  toolbar: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
+    alignItems: "center",
+    paddingVertical: spacing.sm,
+    paddingRight: spacing.md,
   },
-  searchInput: {
+  subcategoryScroll: {
     flex: 1,
   },
-  filterButton: {
-    height: 44,
-    width: 44,
+  subcategories: {
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
     alignItems: "center",
-    justifyContent: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+  },
+  filterButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    height: 36,
+    paddingLeft: spacing.sm,
+  },
+  filterLabel: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 11,
+    letterSpacing: letterSpacing.label,
+    textTransform: "uppercase",
+    color: colors.primary,
   },
   filterBadge: {
-    position: "absolute",
-    top: 0,
-    right: 0,
     minWidth: 16,
     height: 16,
     borderRadius: 8,
@@ -326,6 +372,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   listContent: {
+    paddingTop: spacing.sm,
     paddingBottom: spacing.xl,
   },
   centered: {

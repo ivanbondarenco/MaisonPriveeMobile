@@ -8,6 +8,7 @@ import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
 import { useAuth } from "@/context/AuthContext";
 import { useCart, type CartLine } from "@/context/CartContext";
+import { useT } from "@/i18n";
 import { colors, spacing } from "@/theme";
 
 const priceFormatter = new Intl.NumberFormat("en-US", {
@@ -16,6 +17,7 @@ const priceFormatter = new Intl.NumberFormat("en-US", {
 });
 
 export function CartScreen() {
+  const t = useT();
   const router = useRouter();
   const { user } = useAuth();
   const { lines, isReady, setQuantity, removeItem, subtotal } = useCart();
@@ -32,7 +34,7 @@ export function CartScreen() {
     <Screen>
       <View style={styles.header}>
         <AppText variant="display" style={styles.title}>
-          Cart
+          {t.cart.title}
         </AppText>
       </View>
 
@@ -43,7 +45,7 @@ export function CartScreen() {
         ListEmptyComponent={
           isReady ? (
             <View style={styles.centered}>
-              <AppText variant="body">Your cart is empty.</AppText>
+              <AppText variant="body">{t.cart.empty}</AppText>
             </View>
           ) : null
         }
@@ -55,10 +57,10 @@ export function CartScreen() {
       {lines.length > 0 ? (
         <View style={styles.footer}>
           <View style={styles.subtotalRow}>
-            <AppText variant="label">Subtotal</AppText>
+            <AppText variant="label">{t.cart.subtotal}</AppText>
             <AppText variant="bodyMedium">USD {priceFormatter.format(subtotal)}</AppText>
           </View>
-          <Button label="Checkout" onPress={handleCheckout} />
+          <Button label={t.cart.checkout} onPress={handleCheckout} />
         </View>
       ) : null}
     </Screen>

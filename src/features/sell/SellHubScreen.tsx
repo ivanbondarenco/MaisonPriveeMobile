@@ -8,6 +8,7 @@ import { AppText } from "@/components/AppText";
 import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
 import { useAuth } from "@/context/AuthContext";
+import { useT } from "@/i18n";
 import { colors, spacing } from "@/theme";
 
 function NavRow({
@@ -46,6 +47,7 @@ function NavRow({
 export function SellHubScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const t = useT();
 
   // Shares its cache with the offers screen, so opening that list is instant.
   const { data: offers } = useQuery({
@@ -58,36 +60,35 @@ export function SellHubScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
-        <AppText variant="caption">Maison Privée Atelier</AppText>
+        <AppText variant="caption">{t.sell.eyebrow}</AppText>
         <AppText variant="display" style={styles.title}>
-          Sell With Us
+          {t.sell.title}
         </AppText>
         <AppText variant="body" style={styles.subtitle}>
-          Consign your pieces or request instant liquidity. Every submission is reviewed discreetly by
-          our team.
+          {t.sell.intro}
         </AppText>
 
         <Button
-          label="Submit a Piece"
+          label={t.sell.submitPiece}
           onPress={() => router.push("/consign/new")}
           style={styles.submitButton}
         />
 
         <View style={styles.rows}>
           <NavRow
-            label="My Submissions"
-            description="Status of the pieces you sent for review."
+            label={t.sell.mySubmissions}
+            description={t.sell.mySubmissionsHint}
             onPress={() => router.push("/consignments")}
           />
           <NavRow
-            label="Offers Received"
-            description="Private offers on the pieces you consigned."
+            label={t.sell.offersReceived}
+            description={t.sell.offersReceivedHint}
             badge={pendingOffers > 0 ? String(pendingOffers) : undefined}
             onPress={() => router.push("/offers")}
           />
           <NavRow
-            label="Refer a Seller"
-            description="$125 in credit for you and for them."
+            label={t.sell.referSeller}
+            description={t.sell.referSellerHint}
             onPress={() => router.push("/refer")}
           />
         </View>

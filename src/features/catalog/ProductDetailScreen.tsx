@@ -14,6 +14,7 @@ import { Screen } from "@/components/Screen";
 import { TextField } from "@/components/TextField";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
+import { useT } from "@/i18n";
 import { ApiError } from "@/lib/apiClient";
 import { colors, spacing } from "@/theme";
 
@@ -31,24 +32,16 @@ const CONDITION_LEVEL: Record<string, number> = {
   PRISTINE: 3,
 };
 
-const CONDITION_LABEL: Record<string, string> = {
-  VERY_GOOD: "Very Good",
-  EXCELLENT: "Excellent",
-  PRISTINE: "Pristine",
-};
-
-const SHIPPING_RETURNS_TEXT =
-  "Both domestic shipments within Argentina and international shipments are handled via DHL. All sales are final due to the archive nature of each piece.";
-
 // Mirrors the storefront's "Trust row" (ProductDetailView.tsx) exactly: same
-// three icons and labels.
+// three icons and labels, the labels now coming from the dictionary.
 const TRUST_ITEMS = [
-  { Icon: ShieldCheck, label: "Expertly Authenticated" },
-  { Icon: Truck, label: "Insured Worldwide Shipping" },
-  { Icon: Lock, label: "Secure Checkout" },
+  { Icon: ShieldCheck, key: "trustAuthenticated" },
+  { Icon: Truck, key: "trustShipping" },
+  { Icon: Lock, key: "trustCheckout" },
 ] as const;
 
 export function ProductDetailScreen({ productId }: { productId: string }) {
+  const t = useT();
   const router = useRouter();
   const { user } = useAuth();
   const { addItem } = useCart();
@@ -113,7 +106,7 @@ export function ProductDetailScreen({ productId }: { productId: string }) {
   const handleSubmitOffer = async () => {
     const value = Number(offerPrice);
     if (!offerPrice || Number.isNaN(value) || value <= 0) {
-      setOfferError("Enter a valid offer amount.");
+      setOfferError(t.product.offerInvalid);
       return;
     }
     setOfferError(null);
@@ -122,7 +115,7 @@ export function ProductDetailScreen({ productId }: { productId: string }) {
       await submitOffer(productId, value);
       setOfferSent(true);
     } catch (error) {
-      setOfferError(error instanceof ApiError ? error.message : "Couldn't send your offer.");
+      setOfferError(error instanceof ApiError ? error.message : t.product.offerFailed);
     } finally {
       setOfferSending(false);
     }
@@ -139,7 +132,7 @@ export function ProductDetailScreen({ productId }: { productId: string }) {
   if (isError || !product) {
     return (
       <Screen style={styles.centered}>
-        <AppText variant="body">Couldn't load this product.</AppText>
+        <AppText variant="body">{t.product.error}</AppText>
       </Screen>
     );
   }
@@ -149,14 +142,16 @@ export function ProductDetailScreen({ productId }: { productId: string }) {
   const isSoldOut = product.isSoldOut || product.stock <= 0;
 
   const details = [
-    product.condition && { label: "Condition", value: product.condition },
-    product.size && { label: "Size", value: product.size },
-    product.color && { label: "Color", value: product.color },
-    product.categoryName && { label: "Category", value: product.categoryName },
+    product.condition && { label: t.product.condition, value: product.condition },
+    product.size && { label: t.product.size, value: product.size },
+    product.color && { label: t.product.color, value: product.color },
+    product.categoryName && { label: t.product.category, value: product.categoryName },
   ].filter(Boolean) as { label: string; value: string }[];
 
   const conditionLevel = product.condition ? CONDITION_LEVEL[product.condition] ?? 0 : 0;
-  const conditionName = product.condition ? CONDITION_LABEL[product.condition] ?? product.condition : "";
+  const conditionName = product.condition
+    ? t.product.conditions[product.condition as keyof typeof t.product.conditions] ?? product.condition
+    : "";
 
   const measurementLines = [
     (product.width || product.height) &&
@@ -195,7 +190,7 @@ export function ProductDetailScreen({ productId }: { productId: string }) {
         <View style={styles.body}>
           {(product.isReserved || product.isNew || isSoldOut) && (
             <AppText variant="caption" style={styles.status}>
-              {isSoldOut ? "Sold Out" : product.isReserved ? "Reserved" : "New In"}
+              {isSoldOut ? t.product.soldOut : product.isReserved ? t.product.reserved : t.product.newIn}
             </AppText>
           )}
 
@@ -211,7 +206,7 @@ export function ProductDetailScreen({ productId }: { productId: string }) {
               onPress={handleToggleWishlist}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+              accessibilityLabel={isWishlisted ? t.product.removeFromWishlist : t.product.addToWishlist}
             >
               <Heart
                 size={22}
@@ -227,7 +222,7 @@ export function ProductDetailScreen({ productId }: { productId: string }) {
 
           {!isSoldOut ? (
             <Button
-              label={justAdded ? "Added" : "Add to Cart"}
+              label={justAdded ? t.product.added : t.product.addToCart}
               onPress={handleAddToCart}
               style={styles.addToCartButton}
             />
@@ -235,7 +230,7 @@ export function ProductDetailScreen({ productId }: { productId: string }) {
 
           {!isSoldOut && product.acceptOffers ? (
             <Button
-              label="Make an Offer"
+              label={t.product.makeOffer}
               variant="outline"
               onPress={handleOpenOffer}
               style={styles.offerButton}
@@ -245,7 +240,7 @@ export function ProductDetailScreen({ productId }: { productId: string }) {
           {conditionLevel > 0 && (
             <View style={styles.conditionRow}>
               <AppText variant="caption" style={styles.conditionLabel}>
-                Condition
+                {t.product.condition}
               </AppText>
               <View style={styles.conditionMeta}>
                 <AppText variant="body">{conditionName}</AppText>
@@ -275,7 +270,7 @@ export function ProductDetailScreen({ productId }: { productId: string }) {
           {product.description ? (
             <View style={styles.descriptionWrapper}>
               <AppText variant="label" style={styles.descriptionLabel}>
-                Description
+                {t.product.description}
               </AppText>
               <AppText variant="body" style={styles.description}>
                 {product.description}
@@ -286,7 +281,7 @@ export function ProductDetailScreen({ productId }: { productId: string }) {
           {measurementLines.length > 0 && (
             <View style={styles.accordionSection}>
               <AppText variant="label" style={styles.descriptionLabel}>
-                Details & Measurements
+                {t.product.measurements}
               </AppText>
               {measurementLines.map((line) => (
                 <AppText key={line} variant="body" style={styles.accordionLine}>
@@ -298,19 +293,19 @@ export function ProductDetailScreen({ productId }: { productId: string }) {
 
           <View style={styles.accordionSection}>
             <AppText variant="label" style={styles.descriptionLabel}>
-              Shipping & Returns
+              {t.product.shippingReturns}
             </AppText>
             <AppText variant="body" style={styles.description}>
-              {SHIPPING_RETURNS_TEXT}
+              {t.product.shippingReturnsText}
             </AppText>
           </View>
 
           <View style={styles.trustRow}>
-            {TRUST_ITEMS.map(({ Icon, label }) => (
-              <View key={label} style={styles.trustItem}>
+            {TRUST_ITEMS.map(({ Icon, key }) => (
+              <View key={key} style={styles.trustItem}>
                 <Icon size={20} color={colors.textMuted} strokeWidth={1.25} />
                 <AppText variant="caption" style={styles.trustLabel}>
-                  {label}
+                  {t.product[key]}
                 </AppText>
               </View>
             ))}
@@ -329,7 +324,7 @@ export function ProductDetailScreen({ productId }: { productId: string }) {
               onPress={() => setShowOfferModal(false)}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Close"
+              accessibilityLabel={t.product.close}
             >
               <X size={18} color={colors.textMuted} strokeWidth={1.5} />
             </Pressable>
@@ -337,26 +332,26 @@ export function ProductDetailScreen({ productId }: { productId: string }) {
             {offerSent ? (
               <View style={styles.modalBody}>
                 <AppText variant="caption" style={styles.modalBadge}>
-                  Offer Sent
+                  {t.product.offerSentBadge}
                 </AppText>
                 <AppText variant="displayItalic" style={styles.modalTitle}>
-                  Thank You
+                  {t.product.thankYou}
                 </AppText>
                 <AppText variant="body" style={styles.modalText}>
-                  The consignor has been notified of your offer and will respond soon.
+                  {t.product.offerSentBody}
                 </AppText>
-                <Button label="Close" onPress={() => setShowOfferModal(false)} style={styles.modalButton} />
+                <Button label={t.product.close} onPress={() => setShowOfferModal(false)} style={styles.modalButton} />
               </View>
             ) : (
               <View style={styles.modalBody}>
                 <AppText variant="caption" style={styles.modalBadge}>
-                  Maison Privée Atelier
+                  {t.product.eyebrow}
                 </AppText>
                 <AppText variant="displayItalic" style={styles.modalTitle}>
-                  Make an Offer
+                  {t.product.makeOffer}
                 </AppText>
                 <TextField
-                  label={`Your Offer (${product.currency})`}
+                  label={` ()`}
                   value={offerPrice}
                   onChangeText={setOfferPrice}
                   keyboardType="numeric"
@@ -365,13 +360,13 @@ export function ProductDetailScreen({ productId }: { productId: string }) {
                   autoFocus
                 />
                 <Button
-                  label={offerSending ? "Sending..." : "Send Offer"}
+                  label={offerSending ? t.product.sending : t.product.sendOffer}
                   onPress={handleSubmitOffer}
                   loading={offerSending}
                   style={styles.modalButton}
                 />
                 <AppText variant="caption" style={styles.modalHint}>
-                  Your offer will be sent privately to the consignor.
+                  {t.product.offerPrivacyNote}
                 </AppText>
               </View>
             )}

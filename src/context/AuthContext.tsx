@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import * as authApi from "@/api/auth";
 import type { LoginInput, RegisterInput } from "@/api/schemas";
 import type { User } from "@/api/types";
-import { tokenStore, refreshTokenStore, userStore } from "@/lib/secureStore";
+import { referralStore, tokenStore, refreshTokenStore, userStore } from "@/lib/secureStore";
 import { registerPushToken, unregisterPushToken } from "@/lib/pushNotifications";
 import { queryClient } from "@/lib/queryClient";
 
@@ -48,8 +48,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await persistSession(token, refreshToken, sessionUser);
       },
       register: async (input) => {
-        const { token, refreshToken, user: sessionUser } = await authApi.register(input);
+        const referredBy = await referralStore.get();
+        const { token, refreshToken, user: sessionUser } = await authApi.register(input, referredBy);
         await persistSession(token, refreshToken, sessionUser);
+        // One-shot attribution, like the storefront dropping mp_ref after sign-up.
+        if (referredBy) referralStore.clear().catch(() => {});
       },
       logout: async () => {
         const storedRefreshToken = await refreshTokenStore.get();

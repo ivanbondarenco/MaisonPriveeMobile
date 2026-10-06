@@ -8,6 +8,7 @@ import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
 import { TextField } from "@/components/TextField";
 import { useAuth } from "@/context/AuthContext";
+import { useT } from "@/i18n";
 import { ApiError } from "@/lib/apiClient";
 import { spacing } from "@/theme";
 
@@ -24,6 +25,7 @@ const initialForm = {
 };
 
 export function RegisterScreen() {
+  const t = useT();
   const router = useRouter();
   const { register } = useAuth();
 
@@ -54,7 +56,7 @@ export function RegisterScreen() {
       await register(result.data);
       router.back();
     } catch (error) {
-      setFormError(error instanceof ApiError ? error.message : "Something went wrong.");
+      setFormError(error instanceof ApiError ? error.message : t.auth.somethingWrong);
     } finally {
       setIsSubmitting(false);
     }
@@ -65,16 +67,16 @@ export function RegisterScreen() {
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <AppText variant="display" style={styles.title}>
-            Create Account
+            {t.auth.registerTitle}
           </AppText>
           <AppText variant="body" style={styles.subtitle}>
-            Join the Maison Privée circle.
+            {t.auth.registerSubtitle}
           </AppText>
 
           <View style={styles.form}>
-            <TextField label="Full Name" value={form.name} onChangeText={setField("name")} error={fieldErrors.name} />
+            <TextField label={t.auth.name} value={form.name} onChangeText={setField("name")} error={fieldErrors.name} />
             <TextField
-              label="Email"
+              label={t.auth.email}
               value={form.email}
               onChangeText={setField("email")}
               autoCapitalize="none"
@@ -84,7 +86,7 @@ export function RegisterScreen() {
               error={fieldErrors.email}
             />
             <TextField
-              label="Password"
+              label={t.auth.password}
               value={form.password}
               onChangeText={setField("password")}
               secureTextEntry
@@ -94,23 +96,23 @@ export function RegisterScreen() {
               error={fieldErrors.password}
             />
             <TextField
-              label="Phone Number"
+              label={t.auth.phone}
               value={form.phoneNumber}
               onChangeText={setField("phoneNumber")}
               keyboardType="phone-pad"
               error={fieldErrors.phoneNumber}
             />
-            <TextField label="Country" value={form.country} onChangeText={setField("country")} error={fieldErrors.country} />
-            <TextField label="Province" value={form.province} onChangeText={setField("province")} error={fieldErrors.province} />
-            <TextField label="City" value={form.city} onChangeText={setField("city")} error={fieldErrors.city} />
+            <TextField label={t.auth.country} value={form.country} onChangeText={setField("country")} error={fieldErrors.country} />
+            <TextField label={t.auth.province} value={form.province} onChangeText={setField("province")} error={fieldErrors.province} />
+            <TextField label={t.auth.city} value={form.city} onChangeText={setField("city")} error={fieldErrors.city} />
             <TextField
-              label="Profession"
+              label={t.auth.profession}
               value={form.profession}
               onChangeText={setField("profession")}
               error={fieldErrors.profession}
             />
             <TextField
-              label="Instagram"
+              label={t.auth.instagram}
               value={form.instagram}
               onChangeText={setField("instagram")}
               autoCapitalize="none"
@@ -123,13 +125,13 @@ export function RegisterScreen() {
               </AppText>
             ) : null}
 
-            <Button label="Create Account" onPress={handleSubmit} loading={isSubmitting} />
+            <Button label={t.common.createAccount} onPress={handleSubmit} loading={isSubmitting} />
           </View>
 
           <View style={styles.footer}>
-            <AppText variant="body">Already have an account? </AppText>
+            <AppText variant="body">{t.auth.haveAccount} </AppText>
             <Link href="/(auth)/login" replace asChild>
-              <AppText variant="bodyMedium">Sign In</AppText>
+              <AppText variant="bodyMedium">{t.common.signIn}</AppText>
             </Link>
           </View>
         </ScrollView>

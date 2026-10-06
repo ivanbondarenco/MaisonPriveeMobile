@@ -3,6 +3,7 @@ export const colors = {
   primary: "#1A1A1A", // rich charcoal — text, dark buttons, active states
   secondary: "#E5E1DA", // warm sand
   backgroundLight: "#F9F8F6", // soft alabaster — page background
+  surfaceMuted: "#EFECE7", // search fields and placeholders on the alabaster background
   borderLight: "#E5E1DA",
   textLight: "#1A1A1A",
   textMuted: "rgba(26, 26, 26, 0.7)",

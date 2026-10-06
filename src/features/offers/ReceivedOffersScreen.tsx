@@ -10,17 +10,14 @@ import { AppText } from "@/components/AppText";
 import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
 import { useAuth } from "@/context/AuthContext";
+import { dateLocale, fill, useI18n } from "@/i18n";
 import { ApiError } from "@/lib/apiClient";
 import { colors, spacing } from "@/theme";
 
-const TABS: { value: OfferStatus; label: string }[] = [
-  { value: "PENDING", label: "Pending" },
-  { value: "ACCEPTED", label: "Accepted" },
-  { value: "REJECTED", label: "Rejected" },
-];
+const TAB_VALUES: OfferStatus[] = ["PENDING", "ACCEPTED", "REJECTED"];
 
-const formatMoney = (amount: number, currency: string) =>
-  `${currency} ${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const formatMoney = (amount: number, currency: string, locale: string) =>
+  `${currency} ${amount.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function OfferCard({
   offer,
@@ -33,6 +30,7 @@ function OfferCard({
   onRespond: (action: "ACCEPT" | "REJECT") => void;
   onPressProduct: () => void;
 }) {
+  const { t, locale } = useI18n();
   const difference = offer.amount - offer.product.priceAmount;
 
   return (
@@ -52,31 +50,33 @@ function OfferCard({
             {offer.product.title}
           </AppText>
           <AppText variant="caption" style={styles.currentPrice}>
-            Current price {formatMoney(offer.product.priceAmount, offer.product.currency)}
+            {fill(t.offers.currentPrice, {
+              price: formatMoney(offer.product.priceAmount, offer.product.currency, dateLocale[locale]),
+            })}
           </AppText>
         </View>
       </Pressable>
 
       <View style={styles.offerRow}>
         <View>
-          <AppText variant="caption">Offer</AppText>
+          <AppText variant="caption">{t.offers.offer}</AppText>
           <AppText variant="bodyMedium" style={styles.offerAmount}>
-            {formatMoney(offer.amount, offer.product.currency)}
+            {formatMoney(offer.amount, offer.product.currency, dateLocale[locale])}
           </AppText>
           {difference !== 0 ? (
             <AppText variant="caption" style={styles.offerDelta}>
               {difference > 0 ? "+" : "-"}
-              {formatMoney(Math.abs(difference), offer.product.currency)} vs. current
+              {formatMoney(Math.abs(difference), offer.product.currency, dateLocale[locale])} {t.offers.vsCurrent}
             </AppText>
           ) : null}
         </View>
         <View style={styles.offerMeta}>
-          <AppText variant="caption">From</AppText>
+          <AppText variant="caption">{t.offers.from}</AppText>
           <AppText variant="body" numberOfLines={1}>
             {offer.user.name ?? offer.user.email}
           </AppText>
           <AppText variant="caption" style={styles.offerDate}>
-            {new Date(offer.respondedAt ?? offer.createdAt).toLocaleDateString("en-US", {
+            {new Date(offer.respondedAt ?? offer.createdAt).toLocaleDateString(dateLocale[locale], {
               month: "short",
               day: "numeric",
               year: "numeric",
@@ -88,14 +88,14 @@ function OfferCard({
       {offer.status === "PENDING" ? (
         <View style={styles.actions}>
           <Button
-            label="Reject"
+            label={t.offers.reject}
             variant="outline"
             onPress={() => onRespond("REJECT")}
             disabled={isBusy}
             style={styles.actionButton}
           />
           <Button
-            label="Accept"
+            label={t.offers.accept}
             onPress={() => onRespond("ACCEPT")}
             loading={isBusy}
             style={styles.actionButton}
@@ -107,6 +107,7 @@ function OfferCard({
 }
 
 export function ReceivedOffersScreen() {
+  const { t } = useI18n();
   const router = useRouter();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -140,8 +141,8 @@ export function ReceivedOffersScreen() {
       ]);
     } catch (error) {
       Alert.alert(
-        "Offer not updated",
-        error instanceof ApiError ? error.message : "Couldn't process the offer."
+        t.offers.notUpdated,
+        error instanceof ApiError ? error.message : t.offers.respondFailed
       );
     } finally {
       setBusyId(null);
@@ -154,11 +155,11 @@ export function ReceivedOffersScreen() {
       return;
     }
     Alert.alert(
-      "Accept this offer?",
-      "The piece price will update to the offered amount and every other pending offer on it will be rejected.",
+      t.offers.acceptTitle,
+      t.offers.acceptBody,
       [
-        { text: "Cancel", style: "cancel" },
-        { text: "Accept", onPress: () => sendResponse(offer.id, "ACCEPT") },
+        { text: t.common.cancel, style: "cancel" },
+        { text: t.offers.accept, onPress: () => sendResponse(offer.id, "ACCEPT") },
       ]
     );
   };
@@ -167,9 +168,9 @@ export function ReceivedOffersScreen() {
     return (
       <Screen style={styles.centered}>
         <AppText variant="body" style={styles.centeredText}>
-          Sign in to see offers on your pieces.
+          {t.offers.signInPrompt}
         </AppText>
-        <Button label="Sign In" onPress={() => router.push("/(auth)/login")} style={styles.centeredButton} />
+        <Button label={t.common.signIn} onPress={() => router.push("/(auth)/login")} style={styles.centeredButton} />
       </Screen>
     );
   }
@@ -178,9 +179,9 @@ export function ReceivedOffersScreen() {
     return (
       <Screen style={styles.centered}>
         <AppText variant="body" style={styles.centeredText}>
-          Couldn&apos;t load your offers.
+          {t.offers.error}
         </AppText>
-        <Button label="Try Again" variant="outline" onPress={() => refetch()} style={styles.centeredButton} />
+        <Button label={t.common.tryAgain} variant="outline" onPress={() => refetch()} style={styles.centeredButton} />
       </Screen>
     );
   }
@@ -188,18 +189,18 @@ export function ReceivedOffersScreen() {
   return (
     <Screen>
       <View style={styles.tabs}>
-        {TABS.map((item) => {
-          const isActive = item.value === tab;
+        {TAB_VALUES.map((value) => {
+          const isActive = value === tab;
           return (
             <Pressable
-              key={item.value}
+              key={value}
               accessibilityRole="tab"
               accessibilityState={{ selected: isActive }}
-              onPress={() => setTab(item.value)}
+              onPress={() => setTab(value)}
               style={[styles.tab, isActive && styles.tabActive]}
             >
               <AppText variant="caption" style={isActive ? styles.tabLabelActive : undefined}>
-                {item.label} ({counts[item.value]})
+                {t.offers.status[value]} ({counts[value]})
               </AppText>
             </Pressable>
           );
@@ -214,15 +215,14 @@ export function ReceivedOffersScreen() {
         onRefresh={refetch}
         ListHeaderComponent={
           <AppText variant="body" style={styles.intro}>
-            Offers received on the pieces you consigned. Accepting one updates the piece price to the
-            offered amount.
+            {t.offers.intro}
           </AppText>
         }
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.empty}>
               <AppText variant="body" style={styles.centeredText}>
-                No {TABS.find((item) => item.value === tab)?.label.toLowerCase()} offers.
+                {fill(t.offers.emptyForTab, { status: t.offers.status[tab].toLowerCase() })}
               </AppText>
             </View>
           ) : null

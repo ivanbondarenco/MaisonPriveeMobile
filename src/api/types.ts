@@ -33,6 +33,9 @@ export type Category = {
   parentId: string | null;
 };
 
+// GET /api/categories?onlyLive=true — top-level nodes are the sections (Women/Men/Kids).
+export type CategoryNode = Category & { children?: CategoryNode[] };
+
 export type Product = {
   id: string;
   title: string;
@@ -211,4 +214,57 @@ export type CreditTransaction = {
 export type SiteCredit = {
   balance: number;
   transactions: CreditTransaction[];
+};
+
+// GET /api/memberships/plans — already resolved for one locale by the backend,
+// so nameByLocale/benefitsByLocale never reach the client.
+export type MembershipBenefit = { text: string; bold?: boolean };
+
+export type MembershipPlan = {
+  id: string;
+  name: string;
+  slug: string;
+  tagline: string | null;
+  priceAmount: number;
+  currency: string;
+  interval: "MONTH" | "YEAR";
+  benefits: MembershipBenefit[];
+  badgeLabel: string | null;
+  badgeColor: string | null;
+  cardColor: string | null;
+  isPopular: boolean;
+  sortOrder: number;
+};
+
+export type MembershipStatus = "PENDING" | "ACTIVE" | "CANCELLED" | "EXPIRED";
+
+export type UserMembership = {
+  id: string;
+  planId: string;
+  status: MembershipStatus;
+  pricePaid: number;
+  currency: string;
+  interval: "MONTH" | "YEAR";
+  autoRenew: boolean;
+  startedAt: string;
+  currentPeriodEnd: string;
+  cancelledAt: string | null;
+  createdAt: string;
+  plan: MembershipPlan;
+  order: {
+    id: string;
+    totalAmount: number;
+    creditApplied: number;
+    paymentType: string;
+    paymentStatus: string;
+    transferProofUrl: string | null;
+    transferExpiresAt: string | null;
+  } | null;
+};
+
+// GET /api/memberships/me — "pending" is a plan awaiting transfer confirmation.
+export type MyMembership = {
+  active: UserMembership | null;
+  pending: UserMembership | null;
+  history: UserMembership[];
 };

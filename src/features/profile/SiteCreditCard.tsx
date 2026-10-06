@@ -5,6 +5,7 @@ import { StyleSheet, View } from "react-native";
 
 import { getMyCredits, myCreditsQueryKey } from "@/api/credits";
 import { AppText } from "@/components/AppText";
+import { dateLocale, useI18n } from "@/i18n";
 import { colors, spacing } from "@/theme";
 
 const priceFormatter = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -16,6 +17,7 @@ const formatSigned = (amount: number) =>
   `${amount < 0 ? "-" : "+"}USD ${priceFormatter.format(Math.abs(amount))}`;
 
 export function SiteCreditCard() {
+  const { t, locale } = useI18n();
   const { data, isError, refetch } = useQuery({
     queryKey: myCreditsQueryKey,
     queryFn: getMyCredits,
@@ -33,14 +35,14 @@ export function SiteCreditCard() {
 
   return (
     <View style={styles.card}>
-      <AppText variant="caption">Site Credit</AppText>
+      <AppText variant="caption">{t.profile.siteCredit}</AppText>
       <AppText variant="display" style={styles.balance}>
         {data ? `USD ${priceFormatter.format(data.balance)}` : isError ? "—" : " "}
       </AppText>
       <AppText variant="body" style={styles.hint}>
         {isError
-          ? "Couldn't load your balance."
-          : "Earned from consignment payouts and referrals. Apply it at checkout."}
+          ? t.profile.siteCreditError
+          : t.profile.siteCreditHint}
       </AppText>
 
       {recent.length > 0 ? (
@@ -52,7 +54,7 @@ export function SiteCreditCard() {
                   {tx.reason}
                 </AppText>
                 <AppText variant="caption" style={styles.txDate}>
-                  {new Date(tx.createdAt).toLocaleDateString("en-US", {
+                  {new Date(tx.createdAt).toLocaleDateString(dateLocale[locale], {
                     month: "short",
                     day: "numeric",
                     year: "numeric",

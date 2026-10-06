@@ -8,8 +8,9 @@ import { AppText } from "@/components/AppText";
 import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
 import { useAuth } from "@/context/AuthContext";
+import { dateLocale, useI18n } from "@/i18n";
 import { colors, spacing } from "@/theme";
-import { isProductViewable, STATUS_COLOR, STATUS_LABEL } from "./status";
+import { isProductViewable, STATUS_COLOR } from "./status";
 
 const priceFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
@@ -17,6 +18,7 @@ const priceFormatter = new Intl.NumberFormat("en-US", {
 });
 
 function ConsignmentRow({ item, onPress }: { item: Consignment; onPress: () => void }) {
+  const { t, locale } = useI18n();
   const statusColor = STATUS_COLOR[item.status] ?? colors.gold;
 
   return (
@@ -35,7 +37,7 @@ function ConsignmentRow({ item, onPress }: { item: Consignment; onPress: () => v
             {item.category ? ` — ${item.category}` : ""}
           </AppText>
           <AppText variant="caption" style={styles.cardDate}>
-            {new Date(item.createdAt).toLocaleDateString("en-US", {
+            {new Date(item.createdAt).toLocaleDateString(dateLocale[locale], {
               month: "long",
               day: "numeric",
               year: "numeric",
@@ -44,7 +46,7 @@ function ConsignmentRow({ item, onPress }: { item: Consignment; onPress: () => v
         </View>
         <View style={[styles.statusBadge, { borderColor: statusColor }]}>
           <AppText variant="caption" style={{ color: statusColor }}>
-            {STATUS_LABEL[item.status] ?? item.status}
+            {t.consignments.status[item.status] ?? item.status}
           </AppText>
         </View>
       </View>
@@ -52,14 +54,14 @@ function ConsignmentRow({ item, onPress }: { item: Consignment; onPress: () => v
       <View style={styles.cardBody}>
         {item.priceExpectation ? (
           <View style={styles.cardField}>
-            <AppText variant="caption">Price Expectation</AppText>
+            <AppText variant="caption">{t.consignments.priceExpectation}</AppText>
             <AppText variant="body">{item.priceExpectation}</AppText>
           </View>
         ) : null}
         {item.payoutAmount != null ? (
           <View style={styles.cardField}>
             <AppText variant="caption">
-              Payout{item.payoutMethod === "CREDIT" ? " (Site Credit)" : ""}
+              {item.payoutMethod === "CREDIT" ? t.consignments.payoutCredit : t.consignments.payout}
             </AppText>
             <AppText variant="bodyMedium">USD {priceFormatter.format(item.payoutAmount)}</AppText>
           </View>
@@ -67,7 +69,7 @@ function ConsignmentRow({ item, onPress }: { item: Consignment; onPress: () => v
         {item.product ? (
           <View style={styles.cardField}>
             <AppText variant="caption">
-              {isProductViewable(item.product) ? "Live Piece" : "Piece in Preparation"}
+              {isProductViewable(item.product) ? t.consignments.livePiece : t.consignments.piecePreparing}
             </AppText>
             <AppText variant="body">{item.product.title}</AppText>
           </View>
@@ -79,6 +81,7 @@ function ConsignmentRow({ item, onPress }: { item: Consignment; onPress: () => v
 
 export function MyConsignmentsScreen() {
   const router = useRouter();
+  const { t, locale } = useI18n();
   const { user } = useAuth();
 
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
@@ -91,9 +94,9 @@ export function MyConsignmentsScreen() {
     return (
       <Screen style={styles.centered}>
         <AppText variant="body" style={styles.centeredText}>
-          Sign in to track the pieces you submitted.
+          {t.consignments.signInPrompt}
         </AppText>
-        <Button label="Sign In" onPress={() => router.push("/(auth)/login")} style={styles.centeredButton} />
+        <Button label={t.common.signIn} onPress={() => router.push("/(auth)/login")} style={styles.centeredButton} />
       </Screen>
     );
   }
@@ -102,9 +105,9 @@ export function MyConsignmentsScreen() {
     return (
       <Screen style={styles.centered}>
         <AppText variant="body" style={styles.centeredText}>
-          Couldn&apos;t load your submissions.
+          {t.consignments.error}
         </AppText>
-        <Button label="Try Again" variant="outline" onPress={() => refetch()} style={styles.centeredButton} />
+        <Button label={t.common.tryAgain} variant="outline" onPress={() => refetch()} style={styles.centeredButton} />
       </Screen>
     );
   }
@@ -119,17 +122,17 @@ export function MyConsignmentsScreen() {
         onRefresh={refetch}
         ListHeaderComponent={
           <AppText variant="body" style={styles.intro}>
-            Track the status of pieces you submitted for consignment or instant liquidity.
+            {t.consignments.intro}
           </AppText>
         }
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.empty}>
               <AppText variant="body" style={styles.centeredText}>
-                You haven&apos;t submitted any pieces yet.
+                {t.consignments.empty}
               </AppText>
               <Button
-                label="Submit a Piece"
+                label={t.consignments.submitPiece}
                 onPress={() => router.push("/consign/new")}
                 style={styles.centeredButton}
               />

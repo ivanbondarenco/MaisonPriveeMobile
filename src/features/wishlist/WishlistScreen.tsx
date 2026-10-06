@@ -9,9 +9,11 @@ import { AppText } from "@/components/AppText";
 import { ProductCard } from "@/components/ProductCard";
 import { Screen } from "@/components/Screen";
 import { useAuth } from "@/context/AuthContext";
+import { useT } from "@/i18n";
 import { colors, spacing } from "@/theme";
 
 export function WishlistScreen() {
+  const t = useT();
   const router = useRouter();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -43,7 +45,7 @@ export function WishlistScreen() {
   if (!user) {
     return (
       <Screen style={styles.centered}>
-        <AppText variant="body">Sign in to save pieces to your wishlist.</AppText>
+        <AppText variant="body">{t.wishlist.signInPrompt}</AppText>
       </Screen>
     );
   }
@@ -51,7 +53,7 @@ export function WishlistScreen() {
   if (isError) {
     return (
       <Screen style={styles.centered}>
-        <AppText variant="body">Couldn't load your wishlist.</AppText>
+        <AppText variant="body">{t.wishlist.error}</AppText>
       </Screen>
     );
   }
@@ -60,7 +62,7 @@ export function WishlistScreen() {
     <Screen>
       <View style={styles.header}>
         <AppText variant="display" style={styles.title}>
-          Wishlist
+          {t.wishlist.title}
         </AppText>
       </View>
 
@@ -74,7 +76,7 @@ export function WishlistScreen() {
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.centered}>
-              <AppText variant="body">No pieces saved yet.</AppText>
+              <AppText variant="body">{t.wishlist.empty}</AppText>
             </View>
           ) : null
         }
