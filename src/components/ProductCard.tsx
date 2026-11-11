@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import { Pressable, StyleSheet, View } from "react-native";
 
+import { isPrivateRelease } from "@/api/products";
 import type { Product } from "@/api/types";
 import { useT } from "@/i18n";
 import { colors, spacing } from "@/theme";
@@ -13,7 +14,14 @@ const priceFormatter = new Intl.NumberFormat("en-US", {
 
 export function ProductCard({ product, onPress }: { product: Product; onPress: () => void }) {
   const t = useT();
-  const badge = product.isReserved ? t.productCard.reserved : product.isNew ? t.productCard.newIn : null;
+  // Same priority as the storefront: reserved > private release > new.
+  const badge = product.isReserved
+    ? t.productCard.reserved
+    : isPrivateRelease(product)
+      ? t.productCard.privateRelease
+      : product.isNew
+        ? t.productCard.newIn
+        : null;
   // Mirrors the storefront's ProductCard: the shared order-creation route
   // doesn't always flip isSoldOut when stock hits 0 for older data, so fall
   // back to the raw stock count too.

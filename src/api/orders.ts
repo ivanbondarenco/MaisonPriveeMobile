@@ -2,7 +2,7 @@ import { File, UploadType } from "expo-file-system";
 
 import { apiRequest } from "@/lib/apiClient";
 import { env } from "@/lib/env";
-import type { CouponValidation, Order, ShippingAddress, ShippingRate } from "./types";
+import type { Order, ShippingAddress, ShippingRate } from "./types";
 
 export const getMyOrders = () => apiRequest<Order[]>("/orders/mine");
 
@@ -12,6 +12,8 @@ export const getShippingRates = (payload: {
   city?: string;
   address?: string;
   items: { productId: string; quantity: number }[];
+  declaredValue?: number;
+  declaredValueCurrency?: string;
 }) =>
   apiRequest<{ rates: ShippingRate[] }>("/shipping/rates", {
     method: "POST",
@@ -19,12 +21,8 @@ export const getShippingRates = (payload: {
     auth: false,
   });
 
-export const validateCoupon = (code: string, subtotal: number) =>
-  apiRequest<CouponValidation>("/coupons/validate", { method: "POST", body: { code, subtotal } });
-
 export const createOrder = (payload: {
-  // Items + shipping, BEFORE coupon and credit: the backend re-resolves the
-  // coupon and subtracts it itself, then clamps creditApplied to the balance.
+  // Items + shipping, BEFORE credit: the backend clamps creditApplied to the balance.
   totalAmount: number;
   shippingProvider?: string;
   shippingMethod?: string;
@@ -35,7 +33,6 @@ export const createOrder = (payload: {
   recipientTaxId?: string;
   paymentType: "TRANSFER";
   transferProofUrl?: string | null;
-  couponCode?: string;
   creditApplied?: number;
   items: { productId: string; quantity: number; price: number }[];
 }) => apiRequest<Order>("/orders", { method: "POST", body: payload });

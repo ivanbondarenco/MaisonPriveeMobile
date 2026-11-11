@@ -78,7 +78,7 @@ export function WishlistScreen() {
             <View style={styles.centered}>
               <AppText variant="body">{t.wishlist.empty}</AppText>
             </View>
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) =>
           item ? (

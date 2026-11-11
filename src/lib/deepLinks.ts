@@ -77,9 +77,15 @@ export function resolveIncomingLink(raw: string): ResolvedLink {
         return "/refer";
       case "mis-pedidos":
         return "/orders";
+      // The Private Client Registry, plus the paths it replaced (the web redirects them)
+      case "private-client-registry":
+      case "inner-circle":
       case "membership":
       case "subscription":
         return "/membership";
+      // Kids was retired from the storefront, which redirects it to the catalogue
+      case "kids":
+        return "/shop";
       case "profile":
         return PROFILE_TABS[query.tab] ?? "/profile";
       case "checkout":

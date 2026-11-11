@@ -1,165 +1,250 @@
-import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
-import { ScrollView, Share, StyleSheet, View } from "react-native";
+import { useEffect, useState } from "react";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
 
-import { getReferralStats } from "@/api/users";
+import { sendPrivateReferral } from "@/api/contact";
+import type { PrivateReferralInput } from "@/api/types";
 import { AppText } from "@/components/AppText";
 import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
+import { TextField } from "@/components/TextField";
 import { useAuth } from "@/context/AuthContext";
-import { env } from "@/lib/env";
 import { useT } from "@/i18n";
 import { colors, spacing } from "@/theme";
 
-const priceFormatter = new Intl.NumberFormat("en-US", {
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
+const EMPTY_FORM: PrivateReferralInput = { hostName: "", hostContact: "", guestName: "", guestContact: "", pieces: "" };
 
+// The Private Consignment Circle: a host introduces a collector. There is no cash
+// bonus — the Maison grants the privileges by hand once the introduced collector
+// completes a first consignment. Open to guests too, like the storefront's form.
 export function ReferralScreen() {
   const t = useT();
-  const router = useRouter();
   const { user } = useAuth();
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [isSending, setIsSending] = useState(false);
+  const [isSent, setIsSent] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const { data: stats, isLoading } = useQuery({
-    queryKey: ["referral-stats"],
-    queryFn: getReferralStats,
-    enabled: !!user,
-  });
+  // Signed-in hosts do not retype what the Maison already knows.
+  useEffect(() => {
+    if (!user) return;
+    setForm((current) => ({
+      ...current,
+      hostName: current.hostName || user.name || "",
+      hostContact: current.hostContact || user.email || "",
+    }));
+  }, [user]);
 
-  if (!user) {
-    return (
-      <Screen style={styles.centered}>
-        <AppText variant="display" style={styles.centeredTitle}>
-          {t.referral.signInTitle}
-        </AppText>
-        <AppText variant="body" style={styles.centeredText}>
-          {t.referral.signInPrompt}
-        </AppText>
-        <Button label={t.common.signIn} onPress={() => router.push("/(auth)/login")} style={styles.centeredButton} />
-      </Screen>
-    );
-  }
+  const set = (key: keyof PrivateReferralInput) => (value: string) =>
+    setForm((current) => ({ ...current, [key]: value }));
 
-  // The referral "code" is the user id itself — the same link the storefront's
-  // refer-a-seller page builds, so /vende?ref= captures it the same way.
-  const referralCode = stats?.referralCode ?? user.id;
-  const referralLink = `${env.siteUrl}/vende?ref=${referralCode}`;
-
-  // expo-sharing only takes local file URIs, so a link/text share goes through
-  // React Native's own Share sheet instead.
-  const handleShare = () =>
-    Share.share({ message: `${t.referral.shareMessage}\n${referralLink}`, url: referralLink });
+  const handleSubmit = async () => {
+    if (!form.hostName.trim() || !form.hostContact.trim() || !form.guestName.trim() || !form.guestContact.trim()) {
+      setFormError(t.referral.required);
+      return;
+    }
+    setFormError(null);
+    setIsSending(true);
+    try {
+      await sendPrivateReferral(form);
+      setIsSent(true);
+    } catch {
+      setFormError(t.referral.error);
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={styles.content}>
-        <AppText variant="caption">{t.referral.eyebrow}</AppText>
-        <AppText variant="display" style={styles.title}>
-          {t.referral.title}
-        </AppText>
-        <AppText variant="body" style={styles.subtitle}>
-          {t.referral.intro}
-        </AppText>
-
-        <View style={styles.statsRow}>
-          <View style={styles.stat}>
-            <AppText variant="caption">{t.referral.sellersReferred}</AppText>
-            <AppText variant="display" style={styles.statValue}>
-              {isLoading ? "—" : (stats?.referredCount ?? 0)}
-            </AppText>
-          </View>
-          <View style={styles.stat}>
-            <AppText variant="caption">{t.referral.creditEarned}</AppText>
-            <AppText variant="display" style={styles.statValue}>
-              {isLoading ? "—" : `$${priceFormatter.format(stats?.totalEarned ?? 0)}`}
-            </AppText>
-          </View>
-        </View>
-
-        <AppText variant="label" style={styles.linkLabel}>
-          {t.referral.yourLink}
-        </AppText>
-        <View style={styles.linkBox}>
-          <AppText variant="body" selectable style={styles.link}>
-            {referralLink}
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <AppText variant="caption" style={styles.eyebrow}>
+            {t.referral.eyebrow}
           </AppText>
-        </View>
+          <AppText variant="display" style={styles.title}>
+            {t.referral.title}
+          </AppText>
+          <AppText variant="displayItalic" style={styles.subtitle}>
+            {t.referral.subtitle}
+          </AppText>
+          <AppText variant="body" style={styles.intro}>
+            {t.referral.intro}
+          </AppText>
 
-        <Button label={t.referral.share} onPress={handleShare} style={styles.shareButton} />
-        <AppText variant="body" style={styles.footnote}>
-          {t.referral.footnote}
-        </AppText>
-      </ScrollView>
+          <AppText variant="label" style={styles.sectionLabel}>
+            {t.referral.privilegesLabel}
+          </AppText>
+          <View style={styles.privileges}>
+            {t.referral.privileges.map((privilege, index) => (
+              <View key={privilege.title} style={styles.privilege}>
+                <AppText variant="display" style={styles.privilegeNumber}>
+                  {`0${index + 1}`}
+                </AppText>
+                <View style={styles.privilegeText}>
+                  <AppText variant="bodyMedium">{privilege.title}</AppText>
+                  <AppText variant="body" style={styles.muted}>
+                    {privilege.body}
+                  </AppText>
+                </View>
+              </View>
+            ))}
+          </View>
+
+          <AppText variant="display" style={styles.formTitle}>
+            {t.referral.formTitle}
+          </AppText>
+
+          {isSent ? (
+            <View style={styles.sentBox}>
+              <AppText variant="displayItalic" style={styles.sentTitle}>
+                {t.referral.sentTitle}
+              </AppText>
+              <AppText variant="body" style={styles.sentBody}>
+                {t.referral.sentBody}
+              </AppText>
+            </View>
+          ) : (
+            <>
+              <AppText variant="label" style={styles.legend}>
+                {t.referral.hostLegend}
+              </AppText>
+              <TextField label={t.referral.hostName} value={form.hostName} onChangeText={set("hostName")} maxLength={120} />
+              <TextField
+                label={t.referral.hostContact}
+                value={form.hostContact}
+                onChangeText={set("hostContact")}
+                autoCapitalize="none"
+                maxLength={200}
+              />
+
+              <AppText variant="label" style={styles.legend}>
+                {t.referral.guestLegend}
+              </AppText>
+              <TextField label={t.referral.guestName} value={form.guestName} onChangeText={set("guestName")} maxLength={120} />
+              <TextField
+                label={t.referral.guestContact}
+                value={form.guestContact}
+                onChangeText={set("guestContact")}
+                autoCapitalize="none"
+                maxLength={200}
+              />
+
+              <TextField
+                label={t.referral.pieces}
+                value={form.pieces}
+                onChangeText={set("pieces")}
+                placeholder={t.referral.piecesPlaceholder}
+                multiline
+                maxLength={2000}
+                style={styles.piecesInput}
+              />
+
+              {formError ? (
+                <AppText variant="body" style={styles.errorText}>
+                  {formError}
+                </AppText>
+              ) : null}
+
+              <Button label={t.referral.submit} onPress={handleSubmit} loading={isSending} style={styles.submitButton} />
+            </>
+          )}
+
+          <AppText variant="caption" style={styles.note}>
+            {t.referral.note}
+          </AppText>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: spacing.lg,
-  },
-  centeredTitle: {
-    textAlign: "center",
-  },
-  centeredText: {
-    marginTop: spacing.sm,
-    textAlign: "center",
-    color: colors.textMuted,
-  },
-  centeredButton: {
-    marginTop: spacing.lg,
-    alignSelf: "stretch",
-  },
+  flex: { flex: 1 },
   content: {
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
+  },
+  eyebrow: {
+    color: colors.gold,
   },
   title: {
     marginTop: spacing.xs,
   },
   subtitle: {
+    marginTop: spacing.sm,
+    color: colors.textMuted,
+  },
+  intro: {
     marginTop: spacing.md,
     color: colors.textMuted,
   },
-  statsRow: {
-    flexDirection: "row",
-    gap: spacing.md,
+  muted: {
+    color: colors.textMuted,
+  },
+  sectionLabel: {
     marginTop: spacing.xl,
-  },
-  stat: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.white,
-    padding: spacing.md,
-  },
-  statValue: {
-    marginTop: spacing.xs,
-    fontSize: 24,
-  },
-  linkLabel: {
-    marginTop: spacing.xl,
-    marginBottom: spacing.sm,
-  },
-  linkBox: {
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.white,
-    padding: spacing.md,
-  },
-  link: {
     color: colors.gold,
   },
-  shareButton: {
+  privileges: {
+    marginTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+  privilege: {
+    flexDirection: "row",
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  privilegeNumber: {
+    fontSize: 22,
+    color: colors.gold,
+  },
+  privilegeText: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  formTitle: {
+    marginTop: spacing.xxl,
+    fontSize: 26,
+  },
+  legend: {
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+    color: colors.textMuted,
+  },
+  piecesInput: {
+    height: 88,
+    paddingTop: spacing.sm,
+    textAlignVertical: "top",
+  },
+  errorText: {
+    marginTop: spacing.sm,
+    color: colors.danger,
+  },
+  submitButton: {
     marginTop: spacing.lg,
   },
-  footnote: {
-    marginTop: spacing.md,
+  sentBox: {
+    marginTop: spacing.lg,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.white,
+  },
+  sentTitle: {
+    textAlign: "center",
+  },
+  sentBody: {
+    marginTop: spacing.sm,
     textAlign: "center",
     color: colors.textMuted,
+  },
+  note: {
+    marginTop: spacing.xl,
+    textAlign: "center",
+    color: colors.textMuted,
+    textTransform: "none",
   },
 });

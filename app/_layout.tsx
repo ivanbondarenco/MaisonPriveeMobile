@@ -33,6 +33,9 @@ function RootStack() {
           headerStyle: { backgroundColor: colors.backgroundLight },
           headerTintColor: colors.primary,
           headerShadowVisible: false,
+          // Otherwise iOS labels the back button with the previous route's name,
+          // which for anything pushed from the tab bar is the raw group "(tabs)".
+          headerBackButtonDisplayMode: "minimal",
           headerTitleStyle: { fontFamily: "Inter_500Medium" },
           contentStyle: { backgroundColor: colors.backgroundLight },
         }}
@@ -41,6 +44,7 @@ function RootStack() {
         <Stack.Screen name="(auth)/login" options={{ presentation: "modal", title: "" }} />
         <Stack.Screen name="(auth)/register" options={{ presentation: "modal", title: "" }} />
         <Stack.Screen name="product/[id]" options={{ title: "" }} />
+        <Stack.Screen name="cart" options={{ title: "" }} />
         <Stack.Screen name="checkout" options={{ title: t.screenTitles.checkout }} />
         <Stack.Screen name="orders/index" options={{ title: t.screenTitles.orders }} />
         <Stack.Screen name="orders/[id]" options={{ title: t.screenTitles.order }} />
@@ -50,7 +54,7 @@ function RootStack() {
         <Stack.Screen name="offers/index" options={{ title: t.screenTitles.offers }} />
         <Stack.Screen name="refer" options={{ title: t.screenTitles.refer }} />
         <Stack.Screen name="membership/index" options={{ title: t.screenTitles.membership }} />
-        <Stack.Screen name="membership/subscribe" options={{ title: t.screenTitles.subscribe }} />
+        <Stack.Screen name="admin" options={{ title: t.admin.title }} />
       </Stack>
     </ThemeProvider>
   );

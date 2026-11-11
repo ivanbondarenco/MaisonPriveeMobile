@@ -1,144 +1,76 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { Check } from "lucide-react-native";
 import { useState } from "react";
 import { Alert, ScrollView, StyleSheet, View } from "react-native";
 
-import {
-  cancelMembership,
-  getMembershipPlans,
-  getMyMembership,
-  membershipPlansQueryKey,
-  myMembershipQueryKey,
-} from "@/api/memberships";
-import type { MembershipPlan, UserMembership } from "@/api/types";
+import { cancelMembership, getMyMembership, myMembershipQueryKey, requestRegistryAccess } from "@/api/memberships";
+import type { UserMembership } from "@/api/types";
 import { AppText } from "@/components/AppText";
 import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
 import { useAuth } from "@/context/AuthContext";
-import { dateLocale, fill, useI18n, useT } from "@/i18n";
-import type { Translations } from "@/i18n/en";
+import { dateLocale, fill, useI18n } from "@/i18n";
 import { ApiError } from "@/lib/apiClient";
 import { colors, spacing } from "@/theme";
-
-const priceFormatter = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const formatDate = (iso: string, locale: string) =>
   new Date(iso).toLocaleDateString(locale, { month: "long", day: "numeric", year: "numeric" });
 
-export const intervalLabel = (interval: "MONTH" | "YEAR", t: Translations) =>
-  interval === "YEAR" ? t.membership.perYear : t.membership.perMonth;
-
-function PlanCard({
-  plan,
-  isCurrent,
-  disabled,
-  onSubscribe,
-}: {
-  plan: MembershipPlan;
-  isCurrent: boolean;
-  disabled: boolean;
-  onSubscribe: () => void;
-}) {
-  const t = useT();
-
-  return (
-    <View style={[styles.planCard, plan.cardColor ? { backgroundColor: plan.cardColor } : null]}>
-      {plan.badgeLabel ? (
-        <View style={[styles.badge, plan.badgeColor ? { backgroundColor: plan.badgeColor } : null]}>
-          <AppText variant="caption" style={styles.badgeText}>
-            {plan.badgeLabel}
-          </AppText>
-        </View>
-      ) : null}
-
-      <AppText variant="display" style={styles.planName}>
-        {plan.name}
-      </AppText>
-      {plan.tagline ? (
-        <AppText variant="body" style={styles.planTagline}>
-          {plan.tagline}
-        </AppText>
-      ) : null}
-
-      <AppText variant="bodyMedium" style={styles.planPrice}>
-        {plan.currency} {priceFormatter.format(plan.priceAmount)}
-        <AppText variant="body" style={styles.planInterval}>
-          {` / ${intervalLabel(plan.interval, t)}`}
-        </AppText>
-      </AppText>
-
-      <View style={styles.benefits}>
-        {plan.benefits.map((benefit, index) => (
-          <View key={`${plan.id}-${index}`} style={styles.benefitRow}>
-            <Check size={14} color={colors.gold} strokeWidth={1.5} />
-            <AppText variant={benefit.bold ? "bodyMedium" : "body"} style={styles.benefitText}>
-              {benefit.text}
-            </AppText>
-          </View>
-        ))}
-      </View>
-
-      <Button
-        label={isCurrent ? t.membership.currentPlan : t.membership.subscribe}
-        variant={isCurrent ? "outline" : "primary"}
-        disabled={isCurrent || disabled}
-        onPress={onSubscribe}
-        style={styles.planButton}
-      />
-    </View>
-  );
-}
-
-function CurrentMembership({
+// The Private Client Registry: free and selective. Access is requested here and
+// approved by the Maison from the admin; approved members see each new release
+// 24 hours before the public. Mirrors the storefront's /private-client-registry.
+function ActiveMembership({
   membership,
-  onCancel,
-  isCancelling,
+  onLeave,
+  isLeaving,
 }: {
   membership: UserMembership;
-  onCancel: () => void;
-  isCancelling: boolean;
+  onLeave: () => void;
+  isLeaving: boolean;
 }) {
   const { t, locale } = useI18n();
-  const isCancelled = !membership.autoRenew;
+  // Only a legacy paid plan has a period: the registry itself never lapses.
+  const isPaid = membership.pricePaid > 0;
 
   return (
     <View style={styles.statusBox}>
-      <AppText variant="caption">
-        {isCancelled ? t.membership.endingMembership : t.membership.activeMembership}
+      <AppText variant="caption" style={styles.statusEyebrow}>
+        {t.membership.active}
       </AppText>
       <AppText variant="bodyMedium" style={styles.statusPlan}>
         {membership.plan.name}
       </AppText>
       <AppText variant="body" style={styles.muted}>
-        {fill(isCancelled ? t.membership.endsOn : t.membership.renewsOn, {
-          date: formatDate(membership.currentPeriodEnd, dateLocale[locale]),
-        })}
+        {fill(t.membership.memberSince, { date: formatDate(membership.startedAt, dateLocale[locale]) })}
       </AppText>
-      {isCancelled ? null : (
+      {isPaid ? (
+        <AppText variant="body" style={styles.muted}>
+          {fill(membership.autoRenew ? t.membership.renewsOn : t.membership.endsOn, {
+            date: formatDate(membership.currentPeriodEnd, dateLocale[locale]),
+          })}
+        </AppText>
+      ) : null}
+      {membership.autoRenew || !isPaid ? (
         <Button
-          label={t.membership.cancelRenewal}
+          label={t.membership.leave}
           variant="outline"
-          onPress={onCancel}
-          loading={isCancelling}
-          style={styles.cancelButton}
+          onPress={onLeave}
+          loading={isLeaving}
+          style={styles.leaveButton}
         />
-      )}
+      ) : null}
     </View>
   );
 }
 
 export function MembershipScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: isLoadingSession } = useAuth();
   const queryClient = useQueryClient();
-  const { t, locale } = useI18n();
-  const [isCancelling, setIsCancelling] = useState(false);
+  const { t } = useI18n();
+  const [isRequesting, setIsRequesting] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
 
-  const plansQuery = useQuery({
-    queryKey: membershipPlansQueryKey(locale),
-    queryFn: () => getMembershipPlans(locale),
-  });
   const mineQuery = useQuery({
     queryKey: myMembershipQueryKey,
     queryFn: getMyMembership,
@@ -147,61 +79,66 @@ export function MembershipScreen() {
 
   const active = mineQuery.data?.active ?? null;
   const pending = mineQuery.data?.pending ?? null;
+  // Legacy paid plans wait on a transfer; registry requests wait on approval.
+  const awaitingPayment = !!pending?.order;
+  const canRequest = !active && !pending && !mineQuery.isLoading;
 
-  const handleSubscribe = (plan: MembershipPlan) => {
+  const handleRequest = async () => {
     if (!user) {
-      router.push("/(auth)/login");
+      router.push("/(auth)/register");
       return;
     }
-    router.push(`/membership/subscribe?planId=${plan.id}`);
+    setIsRequesting(true);
+    try {
+      await requestRegistryAccess();
+      await queryClient.invalidateQueries({ queryKey: myMembershipQueryKey });
+    } catch (error) {
+      Alert.alert(error instanceof ApiError ? error.message : t.membership.requestFailed);
+    } finally {
+      setIsRequesting(false);
+    }
   };
 
-  const runCancel = async () => {
-    setIsCancelling(true);
+  const runLeave = async () => {
+    setIsLeaving(true);
     try {
       await cancelMembership();
       queryClient.invalidateQueries({ queryKey: myMembershipQueryKey });
+      // Leaving the registry closes the private window: drop the member-only pieces.
+      queryClient.invalidateQueries({ queryKey: ["products"] });
     } catch (error) {
       Alert.alert(
-        t.membership.cancelFailed,
-        error instanceof ApiError ? error.message : t.membership.cancelFailedBody
+        t.membership.leaveFailed,
+        error instanceof ApiError ? error.message : t.membership.leaveFailedBody
       );
     } finally {
-      setIsCancelling(false);
+      setIsLeaving(false);
     }
   };
 
-  const handleCancel = () => {
-    Alert.alert(
-      t.membership.cancelTitle,
-      t.membership.cancelBody,
-      [
-        { text: t.membership.keepMembership, style: "cancel" },
-        { text: t.membership.cancelRenewal, style: "destructive", onPress: runCancel },
-      ]
-    );
+  const handleLeave = () => {
+    Alert.alert(t.membership.leaveTitle, t.membership.leaveBody, [
+      { text: t.membership.stay, style: "cancel" },
+      { text: t.membership.leave, style: "destructive", onPress: runLeave },
+    ]);
   };
 
-  if (plansQuery.isError) {
-    return (
-      <Screen style={styles.centered}>
-        <AppText variant="body" style={styles.centeredText}>
-          {t.membership.plansError}
-        </AppText>
-        <Button
-          label={t.common.tryAgain}
-          variant="outline"
-          onPress={() => plansQuery.refetch()}
-          style={styles.centeredButton}
-        />
-      </Screen>
-    );
-  }
+  const requestButton = canRequest ? (
+    <Button
+      label={t.membership.requestAccess}
+      onPress={handleRequest}
+      loading={isRequesting}
+      disabled={isLoadingSession}
+      style={styles.requestButton}
+    />
+  ) : null;
 
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
-        <AppText variant="caption">{t.membership.eyebrow}</AppText>
+        <AppText variant="caption" style={styles.eyebrow}>
+          {t.membership.eyebrow}
+        </AppText>
         <AppText variant="display" style={styles.heading}>
           {t.membership.title}
         </AppText>
@@ -209,61 +146,84 @@ export function MembershipScreen() {
           {t.membership.intro}
         </AppText>
 
-        {active ? (
-          <CurrentMembership membership={active} onCancel={handleCancel} isCancelling={isCancelling} />
-        ) : null}
+        {active ? <ActiveMembership membership={active} onLeave={handleLeave} isLeaving={isLeaving} /> : null}
 
         {pending ? (
           <View style={styles.statusBox}>
-            <AppText variant="caption">{t.membership.awaitingPayment}</AppText>
+            <AppText variant="caption" style={styles.statusEyebrow}>
+              {awaitingPayment ? t.membership.awaitingPayment : t.membership.underReview}
+            </AppText>
             <AppText variant="bodyMedium" style={styles.statusPlan}>
               {pending.plan.name}
             </AppText>
             <AppText variant="body" style={styles.muted}>
-              {t.membership.awaitingPaymentBody}
+              {awaitingPayment ? t.membership.awaitingPaymentBody : t.membership.underReviewBody}
             </AppText>
           </View>
         ) : null}
 
-        {(plansQuery.data ?? []).map((plan) => (
-          <PlanCard
-            key={plan.id}
-            plan={plan}
-            isCurrent={active?.planId === plan.id}
-            // One pending subscription at a time — the backend rejects a second.
-            disabled={!!pending}
-            onSubscribe={() => handleSubscribe(plan)}
-          />
-        ))}
-
-        {!plansQuery.isLoading && (plansQuery.data ?? []).length === 0 ? (
-          <AppText variant="body" style={styles.muted}>
-            {t.membership.noPlans}
+        {requestButton}
+        {!user && !isLoadingSession ? (
+          <AppText variant="body" style={styles.guestNote}>
+            {t.membership.guest}
           </AppText>
         ) : null}
+
+        <AppText variant="label" style={styles.sectionLabel}>
+          {t.membership.pillarsLabel}
+        </AppText>
+        <AppText variant="display" style={styles.sectionTitle}>
+          {t.membership.pillarsTitle}
+        </AppText>
+        <View style={styles.pillars}>
+          {t.membership.pillars.map((pillar) => (
+            <View key={pillar.title} style={styles.pillar}>
+              <AppText variant="displayItalic" style={styles.pillarTitle}>
+                {pillar.title}
+              </AppText>
+              <AppText variant="body" style={styles.muted}>
+                {pillar.body}
+              </AppText>
+            </View>
+          ))}
+        </View>
+
+        <AppText variant="label" style={styles.sectionLabel}>
+          {t.membership.stepsLabel}
+        </AppText>
+        <AppText variant="display" style={styles.sectionTitle}>
+          {t.membership.stepsTitle}
+        </AppText>
+        {t.membership.steps.map((step, index) => (
+          <View key={step.title} style={styles.step}>
+            <AppText variant="display" style={styles.stepNumber}>
+              {`0${index + 1}`}
+            </AppText>
+            <View style={styles.stepText}>
+              <AppText variant="label">{step.title}</AppText>
+              <AppText variant="body" style={styles.muted}>
+                {step.body}
+              </AppText>
+            </View>
+          </View>
+        ))}
+
+        {requestButton}
+        <AppText variant="caption" style={styles.note}>
+          {t.membership.note}
+        </AppText>
       </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: spacing.lg,
-  },
-  centeredText: {
-    textAlign: "center",
-    color: colors.textMuted,
-  },
-  centeredButton: {
-    marginTop: spacing.lg,
-    alignSelf: "stretch",
-  },
   content: {
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
+  },
+  eyebrow: {
+    color: colors.gold,
   },
   heading: {
     marginTop: spacing.xs,
@@ -280,55 +240,61 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     gap: spacing.xs,
   },
+  statusEyebrow: {
+    color: colors.gold,
+  },
   statusPlan: {
     marginTop: spacing.xs,
   },
-  cancelButton: {
+  leaveButton: {
     marginTop: spacing.md,
   },
-  planCard: {
+  requestButton: {
     marginTop: spacing.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.white,
   },
-  badge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    marginBottom: spacing.sm,
-    backgroundColor: colors.secondary,
+  guestNote: {
+    marginTop: spacing.sm,
+    textAlign: "center",
+    color: colors.textMuted,
   },
-  badgeText: {
-    color: colors.primary,
+  sectionLabel: {
+    marginTop: spacing.xxl,
+    color: colors.gold,
   },
-  planName: {
-    fontSize: 22,
-  },
-  planTagline: {
+  sectionTitle: {
     marginTop: spacing.xs,
-    color: colors.textMuted,
+    fontSize: 26,
   },
-  planPrice: {
+  pillars: {
     marginTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
   },
-  planInterval: {
-    color: colors.textMuted,
+  pillar: {
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+    gap: spacing.xs,
   },
-  benefits: {
-    marginTop: spacing.md,
-    gap: spacing.sm,
+  pillarTitle: {
+    fontSize: 20,
   },
-  benefitRow: {
+  step: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.sm,
+    gap: spacing.md,
+    marginTop: spacing.md,
   },
-  benefitText: {
+  stepNumber: {
+    fontSize: 24,
+    color: colors.gold,
+  },
+  stepText: {
     flex: 1,
+    gap: spacing.xs,
   },
-  planButton: {
-    marginTop: spacing.lg,
+  note: {
+    marginTop: spacing.md,
+    textAlign: "center",
+    color: colors.textMuted,
   },
 });

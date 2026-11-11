@@ -6,9 +6,10 @@ import { registerSchema } from "@/api/schemas";
 import { AppText } from "@/components/AppText";
 import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
+import { CountryPicker, countryName } from "@/components/CountryPicker";
 import { TextField } from "@/components/TextField";
 import { useAuth } from "@/context/AuthContext";
-import { useT } from "@/i18n";
+import { useI18n } from "@/i18n";
 import { ApiError } from "@/lib/apiClient";
 import { spacing } from "@/theme";
 
@@ -25,11 +26,14 @@ const initialForm = {
 };
 
 export function RegisterScreen() {
-  const t = useT();
+  const { t, locale } = useI18n();
   const router = useRouter();
   const { register } = useAuth();
 
   const [form, setForm] = useState(initialForm);
+  // The backend keeps the country as free text (the storefront's sign-up is a
+  // plain input), so the picker's code is only used to show the selection.
+  const [countryCode, setCountryCode] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -102,7 +106,15 @@ export function RegisterScreen() {
               keyboardType="phone-pad"
               error={fieldErrors.phoneNumber}
             />
-            <TextField label={t.auth.country} value={form.country} onChangeText={setField("country")} error={fieldErrors.country} />
+            <CountryPicker
+              label={t.auth.country}
+              value={countryCode}
+              onChange={(code) => {
+                setCountryCode(code);
+                setField("country")(countryName(code, locale));
+              }}
+              error={fieldErrors.country}
+            />
             <TextField label={t.auth.province} value={form.province} onChangeText={setField("province")} error={fieldErrors.province} />
             <TextField label={t.auth.city} value={form.city} onChangeText={setField("city")} error={fieldErrors.city} />
             <TextField

@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Dimensions, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { submitOffer } from "@/api/offers";
-import { getProduct } from "@/api/products";
+import { getProduct, isPrivateRelease, isPrivateReleaseError } from "@/api/products";
 import { addToWishlist, getWishlist, removeFromWishlist } from "@/api/wishlist";
 import { AppText } from "@/components/AppText";
 import { Button } from "@/components/Button";
@@ -14,7 +14,8 @@ import { Screen } from "@/components/Screen";
 import { TextField } from "@/components/TextField";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
-import { useT } from "@/i18n";
+import { useI18n } from "@/i18n";
+import { categoryLabel } from "@/lib/sections";
 import { ApiError } from "@/lib/apiClient";
 import { colors, spacing } from "@/theme";
 
@@ -41,13 +42,14 @@ const TRUST_ITEMS = [
 ] as const;
 
 export function ProductDetailScreen({ productId }: { productId: string }) {
-  const t = useT();
+  const { t, locale } = useI18n();
   const router = useRouter();
   const { user } = useAuth();
   const { addItem } = useCart();
   const queryClient = useQueryClient();
   const [activeImage, setActiveImage] = useState(0);
   const [justAdded, setJustAdded] = useState(false);
+  const [stockLimitHit, setStockLimitHit] = useState(false);
 
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [offerPrice, setOfferPrice] = useState("");
@@ -55,7 +57,7 @@ export function ProductDetailScreen({ productId }: { productId: string }) {
   const [offerSending, setOfferSending] = useState(false);
   const [offerSent, setOfferSent] = useState(false);
 
-  const { data: product, isLoading, isError } = useQuery({
+  const { data: product, isLoading, isError, error } = useQuery({
     queryKey: ["product", productId],
     queryFn: () => getProduct(productId),
   });
@@ -87,7 +89,11 @@ export function ProductDetailScreen({ productId }: { productId: string }) {
 
   const handleAddToCart = () => {
     if (!product) return;
-    addItem(product);
+    if (!addItem(product)) {
+      setStockLimitHit(true);
+      return;
+    }
+    setStockLimitHit(false);
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 1500);
   };
@@ -129,6 +135,28 @@ export function ProductDetailScreen({ productId }: { productId: string }) {
     );
   }
 
+  // A member's session would have seen it, so this visitor is anonymous or not in the registry.
+  if (isPrivateReleaseError(error)) {
+    return (
+      <Screen style={[styles.centered, styles.gate]}>
+        <AppText variant="caption" style={styles.gateEyebrow}>
+          {t.product.privateReleaseEyebrow}
+        </AppText>
+        <AppText variant="display" style={styles.gateTitle}>
+          {t.product.privateReleaseTitle}
+        </AppText>
+        <AppText variant="body" style={styles.gateBody}>
+          {t.product.privateReleaseBody}
+        </AppText>
+        <Button
+          label={t.product.privateReleaseCta}
+          onPress={() => router.push("/membership")}
+          style={styles.gateButton}
+        />
+      </Screen>
+    );
+  }
+
   if (isError || !product) {
     return (
       <Screen style={styles.centered}>
@@ -140,12 +168,16 @@ export function ProductDetailScreen({ productId }: { productId: string }) {
   // Mirrors the storefront: the shared order-creation route doesn't always
   // flip isSoldOut when stock hits 0 for older data, so fall back to stock too.
   const isSoldOut = product.isSoldOut || product.stock <= 0;
+  const privateRelease = isPrivateRelease(product);
 
   const details = [
     product.condition && { label: t.product.condition, value: product.condition },
     product.size && { label: t.product.size, value: product.size },
     product.color && { label: t.product.color, value: product.color },
-    product.categoryName && { label: t.product.category, value: product.categoryName },
+    product.categoryName && {
+      label: t.product.category,
+      value: categoryLabel({ name: product.categoryName, translations: product.category?.translations }, locale),
+    },
   ].filter(Boolean) as { label: string; value: string }[];
 
   const conditionLevel = product.condition ? CONDITION_LEVEL[product.condition] ?? 0 : 0;
@@ -188,9 +220,15 @@ export function ProductDetailScreen({ productId }: { productId: string }) {
         ) : null}
 
         <View style={styles.body}>
-          {(product.isReserved || product.isNew || isSoldOut) && (
+          {(product.isReserved || privateRelease || product.isNew || isSoldOut) && (
             <AppText variant="caption" style={styles.status}>
-              {isSoldOut ? t.product.soldOut : product.isReserved ? t.product.reserved : t.product.newIn}
+              {isSoldOut
+                ? t.product.soldOut
+                : product.isReserved
+                  ? t.product.reserved
+                  : privateRelease
+                    ? t.product.privateRelease
+                    : t.product.newIn}
             </AppText>
           )}
 
@@ -226,6 +264,11 @@ export function ProductDetailScreen({ productId }: { productId: string }) {
               onPress={handleAddToCart}
               style={styles.addToCartButton}
             />
+          ) : null}
+          {!isSoldOut && stockLimitHit ? (
+            <AppText variant="caption" style={styles.stockNotice}>
+              {t.cart.noMoreStock}
+            </AppText>
           ) : null}
 
           {!isSoldOut && product.acceptOffers ? (
@@ -382,6 +425,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  gate: {
+    paddingHorizontal: spacing.lg,
+  },
+  gateEyebrow: {
+    color: colors.gold,
+  },
+  gateTitle: {
+    marginTop: spacing.sm,
+    textAlign: "center",
+  },
+  gateBody: {
+    marginTop: spacing.md,
+    textAlign: "center",
+    color: colors.textMuted,
+  },
+  gateButton: {
+    marginTop: spacing.xl,
+    alignSelf: "stretch",
+  },
   content: {
     paddingBottom: spacing.xxl,
   },
@@ -432,6 +494,11 @@ const styles = StyleSheet.create({
   },
   addToCartButton: {
     marginTop: spacing.md,
+  },
+  stockNotice: {
+    marginTop: spacing.sm,
+    textAlign: "center",
+    color: colors.danger,
   },
   offerButton: {
     marginTop: spacing.sm,

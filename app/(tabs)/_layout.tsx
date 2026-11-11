@@ -8,7 +8,8 @@ import { colors, fontFamily, radius, spacing } from "@/theme";
 const BAR_HEIGHT = 66;
 
 // Same order as TheRealReal: Home · Shop · Wishlist · Profile · Sell. The cart
-// lives behind the bag icon in the header, so its tab stays routable but hidden.
+// lives behind the bag icon in the header as a root stack screen (app/cart.tsx):
+// since expo-router 58, a tab with `href: null` is unreachable, not just hidden.
 //
 // Floating pill, inset from the screen edges like TheRealReal's: a full-width,
 // square bar gets its corners clipped by the rounded display. This is the one
@@ -90,7 +91,6 @@ export default function TabsLayout() {
           tabBarIcon: ({ color }) => <CircleDollarSign color={color} size={22} strokeWidth={1.5} />,
         }}
       />
-      <Tabs.Screen name="cart" options={{ href: null, title: t.tabs.cart }} />
     </Tabs>
   );
 }

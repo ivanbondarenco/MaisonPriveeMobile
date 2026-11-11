@@ -1,25 +1,16 @@
 import { apiRequest } from "@/lib/apiClient";
-import type { MembershipPlan, MyMembership, UserMembership } from "./types";
-
-// Public: the backend resolves name/tagline/benefits for the locale it is given
-// and falls back to English for anything untranslated.
-export const getMembershipPlans = (locale: string) =>
-  apiRequest<MembershipPlan[]>(`/memberships/plans?locale=${encodeURIComponent(locale)}`, { auth: false });
+import type { MyMembership, UserMembership } from "./types";
 
 export const getMyMembership = () => apiRequest<MyMembership>("/memberships/me");
 
-// Paid by bank transfer and/or site credit — there is no card flow for
-// memberships on the backend, so this mirrors the product checkout.
-export const subscribeToPlan = (payload: {
-  planId: string;
-  transferProofUrl?: string | null;
-  creditApplied?: number;
-}) => apiRequest<UserMembership>("/memberships/subscribe", { method: "POST", body: payload });
+// The Private Client Registry is free and selective: the request stays PENDING
+// until an admin approves the profile. There is no payment and no renewal.
+export const requestRegistryAccess = () =>
+  apiRequest<UserMembership>("/memberships/request", { method: "POST" });
 
-// Stops the renewal; access runs to the end of the period already paid for.
+// Leaves the registry at once; a legacy paid plan only stops renewing and keeps
+// access until the end of the period already paid for.
 export const cancelMembership = () =>
   apiRequest<UserMembership>("/memberships/cancel", { method: "POST" });
 
 export const myMembershipQueryKey = ["memberships", "me"] as const;
-// Keyed by locale so switching language refetches the translated plans.
-export const membershipPlansQueryKey = (locale: string) => ["memberships", "plans", locale] as const;

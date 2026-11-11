@@ -31,9 +31,11 @@ export type Category = {
   id: string;
   name: string;
   parentId: string | null;
+  // Admin-set name per locale (es, pt, fr, zh, ar); null = same name in every language.
+  translations?: Partial<Record<string, string>> | null;
 };
 
-// GET /api/categories?onlyLive=true — top-level nodes are the sections (Women/Men/Kids).
+// GET /api/categories?onlyLive=true — top-level nodes are the sections (Women/Men).
 export type CategoryNode = Category & { children?: CategoryNode[] };
 
 export type Product = {
@@ -60,6 +62,8 @@ export type Product = {
   neckline: string | null;
   status: string;
   acceptOffers: boolean;
+  // Opens to the public at this time; until then only the Private Client Registry sees it.
+  publicAt: string | null;
   createdAt: string;
   updatedAt: string;
   brand: Brand;
@@ -73,25 +77,18 @@ export type ShippingAddress = {
   line2?: string | null;
   postalCode: string;
   city: string;
-  state: string;
+  state?: string; // optional, like the storefront checkout
   country: string; // ISO2
 };
 
 export type ShippingRate = {
   provider: string;
   method: string;
-  productCode: string;
+  /** DHL product code; absent on the in-person pickup option. */
+  productCode?: string;
   price: number;
   currency: string;
   estimatedDays: number;
-};
-
-export type CouponValidation = {
-  code: string;
-  description: string | null;
-  discountType: "PERCENT" | "FIXED";
-  discountValue: number;
-  discount: number;
 };
 
 export type OrderItem = {
@@ -193,11 +190,14 @@ export type ReceivedOffer = {
   };
 };
 
-// GET /api/users/referral-stats — referralCode is the user's own id, by design.
-export type ReferralStats = {
-  referralCode: string;
-  referredCount: number;
-  totalEarned: number;
+// POST /api/contact/private-referral — a host introduces a collector to the
+// Private Consignment Circle. Public: a signed-in host is linked by the backend.
+export type PrivateReferralInput = {
+  hostName: string;
+  hostContact: string;
+  guestName: string;
+  guestContact: string;
+  pieces: string;
 };
 
 // GET /api/credits/me — balance in USD (1 credit = 1 USD) plus the latest 50 movements.
@@ -262,7 +262,8 @@ export type UserMembership = {
   } | null;
 };
 
-// GET /api/memberships/me — "pending" is a plan awaiting transfer confirmation.
+// GET /api/memberships/me — "pending" is a Private Client Registry request awaiting
+// approval, or (legacy paid plans, which carry an order) a transfer awaiting confirmation.
 export type MyMembership = {
   active: UserMembership | null;
   pending: UserMembership | null;

@@ -225,7 +225,7 @@ export function ReceivedOffersScreen() {
                 {fill(t.offers.emptyForTab, { status: t.offers.status[tab].toLowerCase() })}
               </AppText>
             </View>
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) => (
           <OfferCard

@@ -137,7 +137,7 @@ export function MyConsignmentsScreen() {
                 style={styles.centeredButton}
               />
             </View>
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) => (
           <ConsignmentRow item={item} onPress={() => router.push(`/consignments/${item.id}`)} />

@@ -19,19 +19,19 @@ export const registerSchema = z.object({
   instagram: z.string().min(1, "Instagram is required").max(100),
 });
 
+// Same required set as the storefront checkout (handleContinueToPayment):
+// state, apartment and tax id are optional; everything else must be filled.
 export const checkoutSchema = z.object({
-  recipientName: z.string().min(1, "Recipient name is required"),
-  recipientPhone: z.string().min(1, "Phone is required"),
+  firstName: z.string().trim().min(1, "First name is required"),
+  lastName: z.string().trim().min(1, "Last name is required"),
+  recipientPhone: z.string().trim().min(1, "Phone is required"),
   recipientTaxId: z.string().optional(),
-  line1: z.string().min(1, "Address is required"),
+  line1: z.string().trim().min(1, "Address is required"),
   line2: z.string().optional(),
-  city: z.string().min(1, "City is required"),
-  state: z.string().min(1, "State/Province is required"),
-  postalCode: z.string().min(1, "Postal code is required"),
-  country: z
-    .string()
-    .min(2, "Use a 2-letter country code (e.g. AR)")
-    .max(2, "Use a 2-letter country code (e.g. AR)"),
+  city: z.string().trim().min(1, "City is required"),
+  state: z.string().optional(),
+  postalCode: z.string().trim().min(1, "Postal code is required"),
+  country: z.string().length(2, "Country is required"),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;

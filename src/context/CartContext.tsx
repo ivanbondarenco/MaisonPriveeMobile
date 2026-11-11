@@ -18,33 +18,51 @@ type Action =
   | { type: "setQuantity"; productId: string; quantity: number }
   | { type: "clear" };
 
+// A line can never hold more units than the piece has in stock: the backend
+// rejects the whole order otherwise ("Insufficient stock"). Lines whose stock
+// ran out are dropped.
+export const maxQuantity = (product: Product) => Math.max(0, product.stock);
+
+function clampLines(lines: CartLine[]): CartLine[] {
+  return lines
+    .map((l) => ({ ...l, quantity: Math.min(l.quantity, maxQuantity(l.product)) }))
+    .filter((l) => l.quantity > 0);
+}
+
 function reducer(state: CartLine[], action: Action): CartLine[] {
   switch (action.type) {
     case "hydrate":
-      return action.lines;
+      return clampLines(action.lines);
     case "merge": {
       const merged = [...state];
       for (const incoming of action.lines) {
         const idx = merged.findIndex((l) => l.product.id === incoming.product.id);
+        // The server copy carries fresh stock, so prefer its product object.
         if (idx === -1) merged.push(incoming);
-        else merged[idx] = { ...merged[idx], quantity: Math.max(merged[idx].quantity, incoming.quantity) };
+        else merged[idx] = { product: incoming.product, quantity: Math.max(merged[idx].quantity, incoming.quantity) };
       }
-      return merged;
+      return clampLines(merged);
     }
     case "add": {
       const existing = state.find((l) => l.product.id === action.product.id);
       if (existing) {
-        return state.map((l) =>
-          l.product.id === action.product.id ? { ...l, quantity: l.quantity + action.quantity } : l
+        return clampLines(
+          state.map((l) =>
+            l.product.id === action.product.id
+              ? { product: action.product, quantity: l.quantity + action.quantity }
+              : l
+          )
         );
       }
-      return [...state, { product: action.product, quantity: action.quantity }];
+      return clampLines([...state, { product: action.product, quantity: action.quantity }]);
     }
     case "remove":
       return state.filter((l) => l.product.id !== action.productId);
     case "setQuantity":
       if (action.quantity <= 0) return state.filter((l) => l.product.id !== action.productId);
-      return state.map((l) => (l.product.id === action.productId ? { ...l, quantity: action.quantity } : l));
+      return clampLines(
+        state.map((l) => (l.product.id === action.productId ? { ...l, quantity: action.quantity } : l))
+      );
     case "clear":
       return [];
     default:
@@ -55,7 +73,8 @@ function reducer(state: CartLine[], action: Action): CartLine[] {
 type CartContextValue = {
   lines: CartLine[];
   isReady: boolean;
-  addItem: (product: Product, quantity?: number) => void;
+  /** Returns false when stock didn't allow adding the full quantity. */
+  addItem: (product: Product, quantity?: number) => boolean;
   removeItem: (productId: string) => void;
   setQuantity: (productId: string, quantity: number) => void;
   clear: () => void;
@@ -154,7 +173,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     () => ({
       lines,
       isReady,
-      addItem: (product, quantity = 1) => dispatch({ type: "add", product, quantity }),
+      addItem: (product, quantity = 1) => {
+        const inCart = lines.find((l) => l.product.id === product.id)?.quantity ?? 0;
+        dispatch({ type: "add", product, quantity });
+        return inCart + quantity <= maxQuantity(product);
+      },
       removeItem: (productId) => dispatch({ type: "remove", productId }),
       setQuantity: (productId, quantity) => dispatch({ type: "setQuantity", productId, quantity }),
       clear: () => dispatch({ type: "clear" }),

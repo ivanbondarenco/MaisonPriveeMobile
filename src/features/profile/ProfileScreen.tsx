@@ -81,6 +81,13 @@ export function ProfileScreen() {
             onPress={() => router.push("/orders")}
             style={styles.ordersButton}
           />
+          {user.role === "ADMIN" ? (
+            <Button
+              label={t.admin.open}
+              onPress={() => router.push("/admin")}
+              style={styles.ordersButton}
+            />
+          ) : null}
           <Button label={t.profile.signOut} variant="outline" onPress={logout} />
         </View>
       </ScrollView>

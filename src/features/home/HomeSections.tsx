@@ -1,7 +1,7 @@
 import { Image, type ImageSource } from "expo-image";
 import { ChevronRight } from "lucide-react-native";
 import type { ReactNode } from "react";
-import { FlatList, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, View } from "react-native";
 
 import type { Brand, Product } from "@/api/types";
 import { AppText } from "@/components/AppText";
@@ -36,13 +36,13 @@ export function SectionTitle({ title, action }: { title: string; action?: { labe
   );
 }
 
-/** Solid charcoal banner — the "Sell & Earn" slot at the top of TheRealReal's home. */
+/** Solid charcoal banner — the consignment slot at the top of the home. */
 export function PromoBanner(props: {
   eyebrow: string;
   title: string;
   body: string;
   cta: string;
-  footnote: string;
+  footnote?: string;
   onPress: () => void;
 }) {
   return (
@@ -53,7 +53,7 @@ export function PromoBanner(props: {
       <Pressable onPress={props.onPress} accessibilityRole="button" style={styles.promoButton}>
         <AppText style={styles.promoButtonLabel}>{props.cta}</AppText>
       </Pressable>
-      <AppText style={styles.promoFootnote}>{props.footnote}</AppText>
+      {props.footnote ? <AppText style={styles.promoFootnote}>{props.footnote}</AppText> : null}
     </View>
   );
 }
@@ -176,24 +176,6 @@ export function DesignerList({ brands, onPress }: { brands: Brand[]; onPress: (b
         </Pressable>
       ))}
     </View>
-  );
-}
-
-export type OfferCard = { key: string; badge: string; title: string; body: string; cta: string; onPress: () => void };
-
-/** Black cards, like TheRealReal's "Your Exclusive Offers" drawer. */
-export function OffersRow({ offers }: { offers: OfferCard[] }) {
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.offersContent}>
-      {offers.map((offer) => (
-        <Pressable key={offer.key} style={styles.offerCard} onPress={offer.onPress} accessibilityRole="button">
-          <AppText style={styles.offerBadge}>{offer.badge}</AppText>
-          <AppText style={styles.offerTitle}>{offer.title}</AppText>
-          <AppText style={styles.offerBody}>{offer.body}</AppText>
-          <TextLink label={offer.cta} onPress={offer.onPress} light />
-        </Pressable>
-      ))}
-    </ScrollView>
   );
 }
 
@@ -415,36 +397,5 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.displayRegular,
     fontSize: 18,
     color: colors.primary,
-  },
-  offersContent: {
-    paddingHorizontal: spacing.md,
-    gap: spacing.md,
-  },
-  offerCard: {
-    width: 280,
-    backgroundColor: colors.primary,
-    padding: spacing.lg,
-  },
-  offerBadge: {
-    fontFamily: fontFamily.bodyRegular,
-    fontSize: 11,
-    letterSpacing: letterSpacing.labelWide,
-    textTransform: "uppercase",
-    color: colors.gold,
-  },
-  offerTitle: {
-    fontFamily: fontFamily.displayRegular,
-    fontSize: 24,
-    lineHeight: 30,
-    color: colors.white,
-    marginTop: spacing.sm,
-  },
-  offerBody: {
-    fontFamily: fontFamily.bodyLight,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.white,
-    opacity: 0.85,
-    marginTop: spacing.xs,
   },
 });

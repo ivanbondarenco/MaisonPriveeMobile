@@ -1,4 +1,4 @@
-import { apiRequest } from "@/lib/apiClient";
+import { ApiError, apiRequest } from "@/lib/apiClient";
 import type { Brand, FilterOptions, Product, ProductFilters } from "./types";
 
 function toQueryString(filters: ProductFilters) {
@@ -10,11 +10,20 @@ function toQueryString(filters: ProductFilters) {
   return qs ? `?${qs}` : "";
 }
 
+// Signed in, the session goes along: Private Client Registry members (and admins)
+// also get the pieces still inside their 24-hour private window.
 export const getProducts = (filters: ProductFilters = {}) =>
-  apiRequest<Product[]>(`/products${toQueryString(filters)}`, { auth: false });
+  apiRequest<Product[]>(`/products${toQueryString(filters)}`);
 
-export const getProduct = (id: string) =>
-  apiRequest<Product>(`/products/${id}`, { auth: false });
+export const getProduct = (id: string) => apiRequest<Product>(`/products/${id}`);
+
+/** The piece exists but is still reserved for the Private Client Registry. */
+export const isPrivateReleaseError = (error: unknown) =>
+  error instanceof ApiError && error.status === 404 && error.payload?.privateRelease === true;
+
+/** Still inside its 24-hour private window, so only members can see it. */
+export const isPrivateRelease = (product: Product) =>
+  !!product.publicAt && new Date(product.publicAt).getTime() > Date.now();
 
 export const getFilterOptions = () =>
   apiRequest<FilterOptions>("/products/filters/options", { auth: false });

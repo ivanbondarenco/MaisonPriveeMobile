@@ -51,7 +51,7 @@ export function OrdersScreen() {
             <View style={styles.centered}>
               <AppText variant="body">{t.orders.empty}</AppText>
             </View>
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) => (
           <Pressable style={styles.row} onPress={() => router.push(`/orders/${item.id}`)}>

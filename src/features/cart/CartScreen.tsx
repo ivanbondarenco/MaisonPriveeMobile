@@ -7,7 +7,7 @@ import { AppText } from "@/components/AppText";
 import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
 import { useAuth } from "@/context/AuthContext";
-import { useCart, type CartLine } from "@/context/CartContext";
+import { maxQuantity, useCart, type CartLine } from "@/context/CartContext";
 import { useT } from "@/i18n";
 import { colors, spacing } from "@/theme";
 
@@ -47,7 +47,7 @@ export function CartScreen() {
             <View style={styles.centered}>
               <AppText variant="body">{t.cart.empty}</AppText>
             </View>
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) => (
           <CartRow line={item} onSetQuantity={setQuantity} onRemove={removeItem} />
@@ -76,7 +76,9 @@ function CartRow({
   onSetQuantity: (productId: string, quantity: number) => void;
   onRemove: (productId: string) => void;
 }) {
+  const t = useT();
   const { product, quantity } = line;
+  const atStockLimit = quantity >= maxQuantity(product);
   return (
     <View style={styles.row}>
       <Image source={{ uri: product.images[0]?.url }} style={styles.image} contentFit="cover" />
@@ -103,8 +105,10 @@ function CartRow({
               {quantity}
             </AppText>
             <Pressable
-              style={styles.stepperButton}
+              style={[styles.stepperButton, atStockLimit && styles.stepperButtonDisabled]}
               onPress={() => onSetQuantity(product.id, quantity + 1)}
+              disabled={atStockLimit}
+              accessibilityState={{ disabled: atStockLimit }}
             >
               <Plus size={14} color={colors.primary} />
             </Pressable>
@@ -113,6 +117,11 @@ function CartRow({
             <Trash2 size={18} color={colors.textMuted} />
           </Pressable>
         </View>
+        {atStockLimit ? (
+          <AppText variant="caption" style={styles.stockNotice}>
+            {t.cart.noMoreStock}
+          </AppText>
+        ) : null}
       </View>
     </View>
   );
@@ -177,9 +186,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  stepperButtonDisabled: {
+    opacity: 0.3,
+  },
   stepperValue: {
     minWidth: 24,
     textAlign: "center",
+  },
+  stockNotice: {
+    marginTop: spacing.xs,
+    color: colors.danger,
   },
   footer: {
     padding: spacing.md,

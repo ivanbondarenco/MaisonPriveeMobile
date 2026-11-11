@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { Search, ShoppingBag } from "lucide-react-native";
-import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import { useEffect, useRef } from "react";
+import { Pressable, StyleSheet, TextInput, type TextInputInstance, View } from "react-native";
 
 import { useCart } from "@/context/CartContext";
 import { useT } from "@/i18n";
@@ -12,9 +13,17 @@ type Props = {
   search?: {
     value: string;
     onChangeText: (value: string) => void;
-    autoFocus?: boolean;
+    /**
+     * Any new value focuses the field (opening the keyboard). A one-off
+     * autoFocus isn't enough: the Shop tab stays mounted, so arriving from the
+     * Home's search box a second time wouldn't mount it again.
+     */
+    focusRequest?: string;
   };
 };
+
+// Long enough for the tab switch to settle; focusing mid-transition is dropped.
+const FOCUS_DELAY_MS = 350;
 
 // Logo · search · bag, the top bar TheRealReal keeps on Home and Shop.
 export function AppHeader({ search }: Props) {
@@ -22,6 +31,14 @@ export function AppHeader({ search }: Props) {
   const router = useRouter();
   const { lines } = useCart();
   const itemCount = lines.reduce((sum, line) => sum + line.quantity, 0);
+  const inputRef = useRef<TextInputInstance>(null);
+  const focusRequest = search?.focusRequest;
+
+  useEffect(() => {
+    if (!focusRequest) return;
+    const timer = setTimeout(() => inputRef.current?.focus(), FOCUS_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [focusRequest]);
 
   return (
     <View style={styles.container}>
@@ -33,9 +50,9 @@ export function AppHeader({ search }: Props) {
       {search ? (
         <View style={styles.searchBox}>
           <TextInput
+            ref={inputRef}
             value={search.value}
             onChangeText={search.onChangeText}
-            autoFocus={search.autoFocus}
             placeholder={t.home.searchPlaceholder}
             placeholderTextColor={colors.textMuted}
             autoCorrect={false}
@@ -48,7 +65,8 @@ export function AppHeader({ search }: Props) {
       ) : (
         <Pressable
           style={styles.searchBox}
-          onPress={() => router.navigate({ pathname: "/shop", params: { focus: "1" } })}
+          // A fresh value each time, so the Shop focuses its field on every visit.
+          onPress={() => router.navigate({ pathname: "/shop", params: { focus: String(Date.now()) } })}
           accessibilityRole="search"
         >
           <AppText style={styles.searchPlaceholder}>{t.home.searchPlaceholder}</AppText>

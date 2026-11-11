@@ -8,8 +8,8 @@ import { AppHeader } from "@/components/AppHeader";
 import { AppText } from "@/components/AppText";
 import { Screen } from "@/components/Screen";
 import { useDepartments } from "@/features/catalog/useDepartments";
-import { useT } from "@/i18n";
-import { filterByCategory, isAvailable, sectionOf } from "@/lib/sections";
+import { useI18n } from "@/i18n";
+import { filterByCategory, isAvailable, sectionOf, visibleSections } from "@/lib/sections";
 import { colors, fontFamily, spacing } from "@/theme";
 import {
   CategoryGrid,
@@ -17,21 +17,21 @@ import {
   DesignerList,
   EditorialCard,
   ImageBanner,
-  OffersRow,
   ProductRail,
   PromoBanner,
   Section,
   SectionTitle,
 } from "./HomeSections";
+import { HomeFooter } from "./HomeFooter";
 
 const NEW_ARRIVALS_LIMIT = 10;
 const CATEGORY_TILES_LIMIT = 6;
 const DESIGNERS_LIMIT = 8;
 
 export function HomeScreen() {
-  const t = useT();
+  const { t, locale } = useI18n();
   const router = useRouter();
-  // The Home spans the whole catalogue; picking a section (Women/Men/Kids) is the Shop's job.
+  // The Home spans the whole catalogue; picking a section (Women/Men) is the Shop's job.
   const { tree, refetch: refetchCategories } = useDepartments();
 
   // Same list the Shop tab starts from; the backend returns it newest first.
@@ -47,7 +47,8 @@ export function HomeScreen() {
   // so its categories are shown instead. Each tile borrows the photo of the
   // newest piece in it, and empty ones are skipped.
   const categoryTiles = useMemo<CategoryTile[]>(() => {
-    const nodes = tree.length === 1 ? tree[0].children ?? [] : tree;
+    const sections = visibleSections(tree);
+    const nodes = sections.length === 1 ? sections[0].children ?? [] : sections;
     const sectionNames = t.home.sectionNames as Record<string, string>;
     return nodes
       .map((node) => {
@@ -55,14 +56,14 @@ export function HomeScreen() {
         const cover = items.find(isAvailable) ?? items[0];
         return {
           id: node.id,
-          label: sectionNames[node.name.toLowerCase()] ?? node.name,
+          label: node.translations?.[locale] || sectionNames[node.name.toLowerCase()] || node.name,
           imageUrl: cover?.images[0]?.url ?? null,
           count: items.length,
         };
       })
       .filter((tile) => tile.count > 0)
       .slice(0, CATEGORY_TILES_LIMIT);
-  }, [tree, products.data, t]);
+  }, [tree, products.data, t, locale]);
 
   const topDesigners = useMemo(() => {
     const all = brands.data ?? [];
@@ -82,6 +83,17 @@ export function HomeScreen() {
       },
     });
   };
+
+  // The footer's "Shop" column: the live sections (Women, Men, …), like the
+  // storefront's Men / Women links, each opening the Shop on that tab.
+  const footerSections = useMemo(() => {
+    const sectionNames = t.home.sectionNames as Record<string, string>;
+    return visibleSections(tree).map((node) => ({
+      label: node.translations?.[locale] || sectionNames[node.name.toLowerCase()] || node.name,
+      onPress: () =>
+        router.navigate({ pathname: "/shop", params: { section: node.id, category: "", brand: "" } }),
+    }));
+  }, [tree, t, locale, router]);
 
   const refreshing = products.isRefetching || brands.isRefetching;
   const onRefresh = () => {
@@ -106,14 +118,16 @@ export function HomeScreen() {
           eyebrow={t.home.promoEyebrow}
           title={t.home.promoTitle}
           body={t.home.promoBody}
-          cta={t.home.sellNow}
-          footnote={t.home.termsApply}
+          cta={t.home.requestValuation}
           onPress={() => router.navigate("/sell")}
         />
 
         <Section>
           <EditorialCard
             image={require("../../../assets/home/curated.jpg")}
+            // The photo is square (1600×1600); the default 4:3 frame cut the
+            // model's head off.
+            aspectRatio={1}
             title={t.home.editTitle}
             body={t.home.editBody}
             cta={{ label: t.home.shopNow, onPress: () => openShop() }}
@@ -157,30 +171,6 @@ export function HomeScreen() {
         ) : null}
 
         <Section>
-          <SectionTitle title={t.home.offersTitle} />
-          <OffersRow
-            offers={[
-              {
-                key: "sell",
-                badge: t.home.sellOfferBadge,
-                title: t.home.sellOfferTitle,
-                body: t.home.sellOfferBody,
-                cta: t.home.sellNow,
-                onPress: () => router.navigate("/sell"),
-              },
-              {
-                key: "refer",
-                badge: t.home.referOfferBadge,
-                title: t.home.referOfferTitle,
-                body: t.home.referOfferBody,
-                cta: t.home.referNow,
-                onPress: () => router.push("/refer"),
-              },
-            ]}
-          />
-        </Section>
-
-        <Section>
           <EditorialCard
             image={require("../../../assets/home/consign.jpg")}
             aspectRatio={1}
@@ -199,14 +189,17 @@ export function HomeScreen() {
             body={t.home.editorialBody}
           />
         </Section>
+
+        <HomeFooter sections={footerSections} />
       </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  // The footer closes the page, so no extra space after it.
   content: {
-    paddingBottom: spacing.xxl,
+    paddingBottom: 0,
   },
   tagline: {
     backgroundColor: colors.surfaceMuted,

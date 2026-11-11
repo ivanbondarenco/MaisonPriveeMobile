@@ -1,12 +1,23 @@
-import type { CategoryNode, Product } from "@/api/types";
+import type { Category, CategoryNode, Product } from "@/api/types";
 
-// The storefront's sections (Women / Men / Kids) are simply the top-level
-// categories, and the backend has no section filter: the web narrows the full
-// product list on the client, so the app does the same with the same rules.
+// The storefront's sections (Women / Men) are simply the top-level categories,
+// and the backend has no section filter: the web narrows the full product list
+// on the client, so the app does the same with the same rules.
 
 // Men and Women mirror each other: a unisex piece filed under Women > Shoes also
 // shows under Men > Shoes (matched by name path, like ProductsListView on the web).
 const UNISEX_SECTIONS = ["men", "women"];
+
+// Kids was retired from the storefront's navigation. Until the admin empties and
+// deletes it, its pieces stay reachable under "All", but it gets no tab or tile.
+const RETIRED_SECTIONS = ["kids"];
+
+export const visibleSections = (tree: CategoryNode[]) =>
+  tree.filter((node) => !RETIRED_SECTIONS.includes(node.name.toLowerCase()));
+
+/** Category name in the active language; without an admin translation, the base name. */
+export const categoryLabel = (category: Pick<Category, "name" | "translations">, locale: string) =>
+  category.translations?.[locale] || category.name;
 
 export function findCategory(tree: CategoryNode[], id: string): CategoryNode | undefined {
   for (const node of tree) {

@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import * as authApi from "@/api/auth";
 import type { LoginInput, RegisterInput } from "@/api/schemas";
 import type { User } from "@/api/types";
+import { setSessionExpiredHandler } from "@/lib/apiClient";
 import { referralStore, tokenStore, refreshTokenStore, userStore } from "@/lib/secureStore";
 import { registerPushToken, unregisterPushToken } from "@/lib/pushNotifications";
 import { queryClient } from "@/lib/queryClient";
@@ -21,11 +22,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Local-only teardown: wipe the session and every cached query (wishlist,
+  // orders, etc.) so nothing from this account leaks into whoever logs in next.
+  const clearLocalSession = async () => {
+    await Promise.all([tokenStore.clear(), refreshTokenStore.clear(), userStore.clear()]);
+    queryClient.clear();
+    setUser(null);
+  };
+
   useEffect(() => {
-    userStore.get<User>().then((storedUser) => {
-      setUser(storedUser);
-      setIsLoading(false);
+    Promise.all([userStore.get<User>(), tokenStore.get(), refreshTokenStore.get()]).then(
+      async ([storedUser, token, refreshToken]) => {
+        // A user left behind without any token can't make a single authenticated
+        // request — treat it as signed out instead of showing a dead session.
+        if (storedUser && !token && !refreshToken) {
+          await userStore.clear();
+          setUser(null);
+        } else {
+          setUser(storedUser);
+        }
+        setIsLoading(false);
+      }
+    );
+  }, []);
+
+  useEffect(() => {
+    setSessionExpiredHandler(() => {
+      clearLocalSession().catch(() => {});
     });
+    return () => setSessionExpiredHandler(null);
   }, []);
 
   const persistSession = async (token: string, refreshToken: string | undefined, sessionUser: User) => {
@@ -35,6 +60,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userStore.set(sessionUser),
     ]);
     setUser(sessionUser);
+    // The catalogue was fetched anonymously; a Private Client Registry member's
+    // session also carries the pieces still in their private window.
+    queryClient.invalidateQueries({ queryKey: ["products"] });
+    queryClient.invalidateQueries({ queryKey: ["product"] });
     // Fire-and-forget: a denied permission or missing EAS project shouldn't block login.
     registerPushToken().catch(() => {});
   };
@@ -60,11 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           authApi.logout(storedRefreshToken).catch(() => {});
         }
         unregisterPushToken().catch(() => {});
-        await Promise.all([tokenStore.clear(), refreshTokenStore.clear(), userStore.clear()]);
-        // Wipe every cached query (wishlist, orders, etc.) — it belongs to the
-        // account that just logged out and must not leak into whoever logs in next.
-        queryClient.clear();
-        setUser(null);
+        await clearLocalSession();
       },
     }),
     [user, isLoading]

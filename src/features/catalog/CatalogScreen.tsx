@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SlidersHorizontal, X } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { FlatList, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { getBrands, getFilterOptions, getProducts } from "@/api/products";
 import { AppHeader } from "@/components/AppHeader";
@@ -12,12 +12,22 @@ import { DepartmentTabs } from "@/components/DepartmentTabs";
 import { ProductCard } from "@/components/ProductCard";
 import { Screen } from "@/components/Screen";
 import { TextField } from "@/components/TextField";
-import { useT } from "@/i18n";
-import { filterByCategory, findCategory } from "@/lib/sections";
+import { useI18n } from "@/i18n";
+import { categoryLabel, filterByCategory, findCategory } from "@/lib/sections";
 import { colors, fontFamily, letterSpacing, spacing } from "@/theme";
+import {
+  COLOR_OPTIONS,
+  ColorSwatch,
+  FilterGroup,
+  SIZE_OPTIONS,
+  SORT_OPTIONS,
+  type SortOption,
+  sortProducts,
+} from "./catalogFilters";
 import { useDepartments } from "./useDepartments";
 
 type DraftFilters = {
+  sort: SortOption;
   brands: string[];
   sizes: string[];
   colors: string[];
@@ -25,14 +35,14 @@ type DraftFilters = {
   maxPrice: string;
 };
 
-const EMPTY_FILTERS: DraftFilters = { brands: [], sizes: [], colors: [], minPrice: "", maxPrice: "" };
+const EMPTY_FILTERS: DraftFilters = { sort: "our-picks", brands: [], sizes: [], colors: [], minPrice: "", maxPrice: "" };
 
 // Params come from the Home (and deep links): ?section=&category=&brand= narrow
-// the list, ?focus=1 opens with the search field active.
+// the list, ?focus=<any new value> focuses the search field (keyboard up).
 type ShopParams = { section?: string; category?: string; brand?: string; focus?: string };
 
 export function CatalogScreen() {
-  const t = useT();
+  const { t, locale } = useI18n();
   const router = useRouter();
   const params = useLocalSearchParams<ShopParams>();
   const { tree, departments } = useDepartments();
@@ -53,14 +63,26 @@ export function CatalogScreen() {
   const { data: brands } = useQuery({ queryKey: ["brands"], queryFn: getBrands });
   const { data: filterOptions } = useQuery({ queryKey: ["filterOptions"], queryFn: getFilterOptions });
 
+  // A non-default sort counts as an active filter, as on the storefront.
   const activeFilterCount =
+    (appliedFilters.sort !== "our-picks" ? 1 : 0) +
     appliedFilters.brands.length +
     appliedFilters.sizes.length +
     appliedFilters.colors.length +
     (appliedFilters.minPrice || appliedFilters.maxPrice ? 1 : 0);
 
+  // Sorting happens on the client (like the storefront), so it isn't part of
+  // the request and changing it doesn't refetch.
+  const { sort, ...serverFilters } = appliedFilters;
+
+  // The storefront's fixed sizes, plus any other size a live piece carries.
+  const sizeOptions = useMemo(
+    () => [...SIZE_OPTIONS, ...(filterOptions?.sizes ?? []).filter((s) => !SIZE_OPTIONS.includes(s))],
+    [filterOptions]
+  );
+
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
-    queryKey: ["products", { search, ...appliedFilters }],
+    queryKey: ["products", { search, ...serverFilters }],
     queryFn: () =>
       getProducts({
         search: search || undefined,
@@ -75,6 +97,13 @@ export function CatalogScreen() {
   const openFilters = () => {
     setDraftFilters(appliedFilters);
     setShowFilters(true);
+  };
+
+  const sortLabels: Record<SortOption, string> = {
+    "our-picks": t.catalog.ourPicks,
+    newest: t.catalog.newestFirst,
+    "price-desc": t.catalog.priceHighLow,
+    "price-asc": t.catalog.priceLowHigh,
   };
 
   const toggleDraftValue = (key: "brands" | "sizes" | "colors", value: string) => {
@@ -101,8 +130,8 @@ export function CatalogScreen() {
   // Sections and categories are narrowed on the client, like the storefront —
   // the products endpoint has no category filter.
   const visible = useMemo(
-    () => filterByCategory(data ?? [], tree, categoryId ?? sectionId),
-    [data, tree, categoryId, sectionId]
+    () => sortProducts(filterByCategory(data ?? [], tree, categoryId ?? sectionId), sort),
+    [data, tree, categoryId, sectionId, sort]
   );
 
   const subcategories = useMemo(
@@ -122,7 +151,7 @@ export function CatalogScreen() {
 
   return (
     <Screen>
-      <AppHeader search={{ value: search, onChangeText: setSearch, autoFocus: params.focus === "1" }} />
+      <AppHeader search={{ value: search, onChangeText: setSearch, focusRequest: params.focus || undefined }} />
       <DepartmentTabs departments={departments} value={sectionId} onChange={selectSection} />
 
       <View style={styles.toolbar}>
@@ -152,7 +181,7 @@ export function CatalogScreen() {
                 variant="caption"
                 style={[styles.chipText, categoryId === category.id && styles.chipTextActive]}
               >
-                {category.name}
+                {categoryLabel(category, locale)}
               </AppText>
             </Pressable>
           ))}
@@ -194,7 +223,7 @@ export function CatalogScreen() {
               <View style={styles.centered}>
                 <AppText variant="body">{t.catalog.empty}</AppText>
               </View>
-            ) : null
+            ) : undefined
           }
           renderItem={({ item }) =>
             item ? (
@@ -209,7 +238,7 @@ export function CatalogScreen() {
       )}
 
       <Modal visible={showFilters} transparent animationType="slide" onRequestClose={() => setShowFilters(false)}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
               <AppText variant="label">{t.catalog.filters}</AppText>
@@ -218,10 +247,40 @@ export function CatalogScreen() {
               </Pressable>
             </View>
 
-            <ScrollView contentContainerStyle={styles.modalContent}>
+            {/* The iOS number pad has no return key: dragging the list or tapping
+                empty space is the only way to put it away. */}
+            <ScrollView
+              contentContainerStyle={styles.modalContent}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+            >
+              <View style={styles.filterSection}>
+                <AppText variant="caption" style={styles.filterSectionLabel}>{t.catalog.sortBy}</AppText>
+                {SORT_OPTIONS.map((option) => {
+                  const selected = draftFilters.sort === option;
+                  return (
+                    <Pressable
+                      key={option}
+                      style={styles.radioRow}
+                      onPress={() => setDraftFilters((c) => ({ ...c, sort: option }))}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                    >
+                      <View style={[styles.radio, selected && styles.radioSelected]}>
+                        {selected ? <View style={styles.radioDot} /> : null}
+                      </View>
+                      <AppText variant={selected ? "bodyMedium" : "body"} style={!selected && styles.mutedText}>
+                        {sortLabels[option]}
+                      </AppText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <AppText variant="caption" style={styles.filterSectionLabel}>{t.catalog.filters}</AppText>
+
               {brands && brands.length > 0 ? (
-                <View style={styles.filterSection}>
-                  <AppText variant="caption" style={styles.filterSectionLabel}>{t.catalog.brand}</AppText>
+                <FilterGroup title={t.catalog.brand} selectedCount={draftFilters.brands.length}>
                   <View style={styles.chipRow}>
                     {brands.map((brand) => (
                       <Pressable
@@ -238,14 +297,12 @@ export function CatalogScreen() {
                       </Pressable>
                     ))}
                   </View>
-                </View>
+                </FilterGroup>
               ) : null}
 
-              {filterOptions && filterOptions.sizes.length > 0 ? (
-                <View style={styles.filterSection}>
-                  <AppText variant="caption" style={styles.filterSectionLabel}>{t.catalog.size}</AppText>
+              <FilterGroup title={t.catalog.size} selectedCount={draftFilters.sizes.length}>
                   <View style={styles.chipRow}>
-                    {filterOptions.sizes.map((size) => (
+                    {sizeOptions.map((size) => (
                       <Pressable
                         key={size}
                         style={[styles.chip, draftFilters.sizes.includes(size) && styles.chipActive]}
@@ -260,32 +317,30 @@ export function CatalogScreen() {
                       </Pressable>
                     ))}
                   </View>
-                </View>
-              ) : null}
+              </FilterGroup>
 
-              {filterOptions && filterOptions.colors.length > 0 ? (
-                <View style={styles.filterSection}>
-                  <AppText variant="caption" style={styles.filterSectionLabel}>{t.catalog.color}</AppText>
-                  <View style={styles.chipRow}>
-                    {filterOptions.colors.map((color) => (
+              <FilterGroup title={t.catalog.color} selectedCount={draftFilters.colors.length}>
+                <View style={styles.chipRow}>
+                  {COLOR_OPTIONS.map((option) => {
+                    const selected = draftFilters.colors.includes(option.name);
+                    return (
                       <Pressable
-                        key={color}
-                        style={[styles.chip, draftFilters.colors.includes(color) && styles.chipActive]}
-                        onPress={() => toggleDraftValue("colors", color)}
+                        key={option.name}
+                        style={[styles.chip, styles.colorChip, selected && styles.chipActive]}
+                        onPress={() => toggleDraftValue("colors", option.name)}
+                        accessibilityState={{ selected }}
                       >
-                        <AppText
-                          variant="caption"
-                          style={[styles.chipText, draftFilters.colors.includes(color) && styles.chipTextActive]}
-                        >
-                          {color}
+                        <ColorSwatch swatch={option.swatch} border={option.border || selected} />
+                        <AppText variant="caption" style={[styles.chipText, selected && styles.chipTextActive]}>
+                          {t.catalog.colorNames[option.name]}
                         </AppText>
                       </Pressable>
-                    ))}
-                  </View>
+                    );
+                  })}
                 </View>
-              ) : null}
+              </FilterGroup>
 
-              <View style={styles.filterSection}>
+              <View style={[styles.filterSection, styles.priceSection]}>
                 <AppText variant="caption" style={styles.filterSectionLabel}>{t.catalog.price}</AppText>
                 <View style={styles.priceRow}>
                   <View style={styles.priceInput}>
@@ -315,7 +370,7 @@ export function CatalogScreen() {
               <Button label={t.catalog.apply} onPress={handleApplyFilters} style={styles.modalFooterButton} />
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </Screen>
   );
@@ -423,6 +478,41 @@ const styles = StyleSheet.create({
   chipActive: {
     borderColor: colors.primary,
     backgroundColor: colors.primary,
+  },
+  colorChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  radioRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.xs + 2,
+  },
+  radio: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: colors.borderLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioSelected: {
+    borderColor: colors.primary,
+  },
+  radioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+  },
+  mutedText: {
+    color: colors.textMuted,
+  },
+  priceSection: {
+    marginTop: spacing.md,
   },
   chipText: {
     color: colors.textLight,
