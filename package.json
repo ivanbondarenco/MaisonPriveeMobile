@@ -44,6 +44,7 @@
     "start": "expo start",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "check:api": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-api.ts",
     "update:preview": "eas update --channel preview --environment preview",
     "update:production": "eas update --channel production --environment production"
   },

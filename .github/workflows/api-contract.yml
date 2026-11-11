@@ -1,0 +1,51 @@
+# Guards the app against backend changes it can't see coming.
+#
+# The backend is shared with the website and deployed from another repo
+# (MaisonPrivee), while the published app keeps running whatever it shipped.
+# This checks the live production API against what the app reads
+# (src/api/contract.ts), on a schedule and on demand right after a web deploy
+# (Actions → "API contract" → Run workflow). A red run means a deploy broke
+# something the app depends on.
+#
+# Optional repository secrets CHECK_API_EMAIL / CHECK_API_PASSWORD (a test
+# account) extend the check to the signed-in endpoints.
+
+name: API contract
+
+on:
+  schedule:
+    - cron: "17 */3 * * *" # every 3 hours
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  typecheck:
+    # Schemas in contract.ts `satisfies` the app's types: a type that drifts
+    # from its schema fails here.
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+
+  live-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check:api
+        env:
+          CHECK_API_URL: https://api.maisonpriveeatelier.com/api
+          CHECK_API_EMAIL: ${{ secrets.CHECK_API_EMAIL }}
+          CHECK_API_PASSWORD: ${{ secrets.CHECK_API_PASSWORD }}
