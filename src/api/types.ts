@@ -72,6 +72,11 @@ export type Product = {
   categoryName: string;
 };
 
+// GET /api/products (the catalogue list). Each piece also says which categories
+// it shows under — its own, every ancestor and, if unisex, the mirror branch of
+// the other section — computed by the backend (lib/categoryMembership.ts).
+export type CatalogProduct = Product & { matchCategoryIds: string[] };
+
 export type ShippingAddress = {
   line1: string;
   line2?: string | null;

@@ -53,7 +53,7 @@ export function HomeScreen() {
     const sectionNames = t.home.sectionNames as Record<string, string>;
     return nodes
       .map((node) => {
-        const items = filterByCategory(products.data ?? [], tree, node.id);
+        const items = filterByCategory(products.data ?? [], node.id);
         const cover = items.find(isAvailable) ?? items[0];
         return {
           id: node.id,

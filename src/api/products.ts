@@ -1,5 +1,5 @@
 import { ApiError, apiRequest } from "@/lib/apiClient";
-import type { Brand, FilterOptions, Product, ProductFilters } from "./types";
+import type { Brand, CatalogProduct, FilterOptions, Product, ProductFilters } from "./types";
 
 function toQueryString(filters: ProductFilters) {
   const params = new URLSearchParams();
@@ -13,7 +13,7 @@ function toQueryString(filters: ProductFilters) {
 // Signed in, the session goes along: Private Client Registry members (and admins)
 // also get the pieces still inside their 24-hour private window.
 export const getProducts = (filters: ProductFilters = {}) =>
-  apiRequest<Product[]>(`/products${toQueryString(filters)}`);
+  apiRequest<CatalogProduct[]>(`/products${toQueryString(filters)}`);
 
 export const getProduct = (id: string) => apiRequest<Product>(`/products/${id}`);
 

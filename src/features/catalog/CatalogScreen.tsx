@@ -130,7 +130,7 @@ export function CatalogScreen() {
   // Sections and categories are narrowed on the client, like the storefront —
   // the products endpoint has no category filter.
   const visible = useMemo(
-    () => sortProducts(filterByCategory(data ?? [], tree, categoryId ?? sectionId), sort),
+    () => sortProducts(filterByCategory(data ?? [], categoryId ?? sectionId), sort),
     [data, tree, categoryId, sectionId, sort]
   );
 
