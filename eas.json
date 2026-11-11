@@ -11,10 +11,13 @@
       },
       "ios": {
         "resourceClass": "default"
-      }
+      },
+      "channel": "base"
     },
     "development": {
       "extends": "base",
+      "channel": "development",
+      "environment": "development",
       "distribution": "internal",
       "ios": {
         "simulator": true
@@ -22,10 +25,14 @@
     },
     "preview": {
       "extends": "base",
+      "channel": "preview",
+      "environment": "preview",
       "distribution": "internal"
     },
     "production": {
       "extends": "base",
+      "channel": "production",
+      "environment": "production",
       "distribution": "store",
       "autoIncrement": true
     }

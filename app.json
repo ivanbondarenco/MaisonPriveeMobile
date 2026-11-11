@@ -8,10 +8,20 @@
     "scheme": "maisonprivee",
     "userInterfaceStyle": "light",
     "backgroundColor": "#F9F8F6",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/83ca0642-4e65-4f17-ae9d-20c241dfd732"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.maisonpriveeatelier.mobile",
       "associatedDomains": [
+        "applinks:maisonpriveeatelier.com",
+        "applinks:www.maisonpriveeatelier.com",
         "applinks:maisonpriveeatelier.com",
         "applinks:www.maisonpriveeatelier.com"
       ],
@@ -38,6 +48,22 @@
           "cameraPermission": "Maison Privée Atelier needs access to your camera so you can photograph the pieces you submit for consignment."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "83ca0642-4e65-4f17-ae9d-20c241dfd732"
+      }
+    },
+    "owner": "ignaciosena",
+    "android": {
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
+    }
   }
 }
