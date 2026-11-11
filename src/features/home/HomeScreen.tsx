@@ -6,6 +6,7 @@ import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { getBrands, getProducts } from "@/api/products";
 import { AppHeader } from "@/components/AppHeader";
 import { AppText } from "@/components/AppText";
+import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
 import { useDepartments } from "@/features/catalog/useDepartments";
 import { useI18n } from "@/i18n";
@@ -180,6 +181,22 @@ export function HomeScreen() {
           />
         </Section>
 
+        {/* Personal Sourcing, like the storefront home's SourcingBlock. */}
+        <Section>
+          <View style={styles.sourcing}>
+            <AppText variant="caption" style={styles.sourcingEyebrow}>
+              {t.sourcing.label}
+            </AppText>
+            <AppText variant="display" style={styles.sourcingTitle}>
+              {t.sourcing.title}
+            </AppText>
+            <AppText variant="body" style={styles.sourcingBody}>
+              {t.sourcing.description}
+            </AppText>
+            <Button label={t.sourcing.submit} variant="outline" onPress={() => router.push("/sourcing")} />
+          </View>
+        </Section>
+
         <Section>
           <EditorialCard
             image={require("../../../assets/home/editorial.jpg")}
@@ -212,5 +229,27 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.primary,
     textAlign: "center",
+  },
+  sourcing: {
+    marginHorizontal: spacing.lg,
+    paddingVertical: spacing.xl,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.borderLight,
+    alignItems: "center",
+  },
+  sourcingEyebrow: {
+    color: colors.gold,
+  },
+  sourcingTitle: {
+    marginTop: spacing.sm,
+    textAlign: "center",
+    fontSize: 26,
+  },
+  sourcingBody: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.lg,
+    textAlign: "center",
+    color: colors.textMuted,
   },
 });

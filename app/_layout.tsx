@@ -11,6 +11,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { I18nProvider, useT } from "@/i18n";
 import { queryClient } from "@/lib/queryClient";
+import { useVisitTracker } from "@/lib/visits";
 import { colors } from "@/theme";
 
 SplashScreen.preventAutoHideAsync();
@@ -43,6 +44,13 @@ function RootStack() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)/login" options={{ presentation: "modal", title: "" }} />
         <Stack.Screen name="(auth)/register" options={{ presentation: "modal", title: "" }} />
+        {/* Modal too: it's opened from the sign-in modal, and a card pushed from a
+            modal would slide in underneath it. */}
+        <Stack.Screen name="(auth)/forgot-password" options={{ presentation: "modal", title: "" }} />
+        <Stack.Screen name="account/edit" options={{ title: t.account.editProfile }} />
+        <Stack.Screen name="account/delete" options={{ title: t.account.deleteAccount }} />
+        <Stack.Screen name="sourcing" options={{ title: t.sourcing.label }} />
+        <Stack.Screen name="authenticity" options={{ title: t.authenticity.title }} />
         <Stack.Screen name="product/[id]" options={{ title: "" }} />
         <Stack.Screen name="cart" options={{ title: "" }} />
         <Stack.Screen name="checkout" options={{ title: t.screenTitles.checkout }} />
@@ -69,6 +77,8 @@ export default function RootLayout() {
     Inter_400Regular,
     Inter_500Medium,
   });
+
+  useVisitTracker();
 
   useEffect(() => {
     if (fontsLoaded) SplashScreen.hideAsync();

@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { AppText } from "@/components/AppText";
 import { Button } from "@/components/Button";
@@ -8,6 +8,7 @@ import { SegmentedControl } from "@/components/SegmentedControl";
 import { useAuth } from "@/context/AuthContext";
 import { LOCALES, useI18n } from "@/i18n";
 import { colors, spacing } from "@/theme";
+import { LoyaltyCard } from "./LoyaltyCard";
 import { SiteCreditCard } from "./SiteCreditCard";
 
 export function ProfileScreen() {
@@ -66,9 +67,16 @@ export function ProfileScreen() {
         </View>
 
         <SiteCreditCard />
+        <LoyaltyCard />
 
         <View style={styles.footerActions}>
           {languagePicker}
+          <Button
+            label={t.account.editProfile}
+            variant="outline"
+            onPress={() => router.push("/account/edit")}
+            style={styles.ordersButton}
+          />
           <Button
             label={t.screenTitles.membership}
             variant="outline"
@@ -89,6 +97,14 @@ export function ProfileScreen() {
             />
           ) : null}
           <Button label={t.profile.signOut} variant="outline" onPress={logout} />
+          {/* Admins are refused by the backend; they're removed by another admin. */}
+          {user.role !== "ADMIN" ? (
+            <Pressable onPress={() => router.push("/account/delete")} style={styles.deleteLink} accessibilityRole="button">
+              <AppText variant="caption" style={styles.deleteLinkText}>
+                {t.account.deleteAccount}
+              </AppText>
+            </Pressable>
+          ) : null}
         </View>
       </ScrollView>
     </Screen>
@@ -141,5 +157,13 @@ const styles = StyleSheet.create({
   },
   ordersButton: {
     marginBottom: 0,
+  },
+  deleteLink: {
+    alignSelf: "center",
+    marginTop: spacing.md,
+    padding: spacing.sm,
+  },
+  deleteLinkText: {
+    color: colors.danger,
   },
 });

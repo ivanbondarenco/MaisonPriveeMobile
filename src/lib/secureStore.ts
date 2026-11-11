@@ -48,6 +48,18 @@ export const localeStore = {
   set: (locale: string) => SecureStore.setItemAsync(LOCALE_KEY, locale),
 };
 
+// Anonymous visitor id + the last day a visit was recorded (the storefront's
+// localStorage "mp_vid" / "mp_vday"). Not tied to the account, so it survives sign-out.
+const VISITOR_ID_KEY = "mp_vid";
+const VISIT_DAY_KEY = "mp_vday";
+
+export const visitStore = {
+  getVisitorId: () => SecureStore.getItemAsync(VISITOR_ID_KEY),
+  setVisitorId: (id: string) => SecureStore.setItemAsync(VISITOR_ID_KEY, id),
+  getLastDay: () => SecureStore.getItemAsync(VISIT_DAY_KEY),
+  setLastDay: (day: string) => SecureStore.setItemAsync(VISIT_DAY_KEY, day),
+};
+
 // Referrer's user id captured from an incoming ?ref= link (same role as the
 // storefront's localStorage "mp_ref"); sent as referredBy on register, then cleared.
 const REFERRAL_KEY = "mp_ref";

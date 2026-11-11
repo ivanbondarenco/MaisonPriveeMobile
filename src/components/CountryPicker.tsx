@@ -32,6 +32,19 @@ export function countryName(code: string, locale: string) {
   return countries.getName(code, locale) ?? countries.getName(code, "en") ?? code;
 }
 
+/**
+ * ISO code for a country stored by name. The backend keeps free text, written in
+ * whatever language the person signed up in, so every registered language is tried.
+ */
+export function countryCodeFromName(name: string | null | undefined): string {
+  if (!name) return "";
+  for (const lang of ["en", "es", "fr", "pt", "zh"]) {
+    const code = countries.getAlpha2Code(name, lang);
+    if (code) return code;
+  }
+  return "";
+}
+
 type CountryPickerProps = {
   label: string;
   /** ISO 3166-1 alpha-2 code, e.g. "AR". */

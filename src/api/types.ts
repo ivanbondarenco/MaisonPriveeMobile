@@ -216,6 +216,34 @@ export type SiteCredit = {
   transactions: CreditTransaction[];
 };
 
+// GET /api/loyalty/tiers — Le Cercle, the earned ladder (distinct from the
+// Private Client Registry). A tier is reached by net consignment payouts over
+// the last twelve months; its bonus is added on top of the commission rate.
+export type LoyaltyTier = {
+  id: string;
+  key: string;
+  name: string;
+  minSales: number;
+  bonusPct: number;
+  accent: string;
+  cardColor: string;
+  benefits: Partial<Record<string, string[]>>;
+  sortOrder: number;
+  isActive: boolean;
+};
+
+// GET /api/loyalty/me
+export type LoyaltyStanding = {
+  currency: string;
+  periodStart: string;
+  netSales12m: number;
+  salesCount12m: number;
+  netSalesLifetime: number;
+  salesCountLifetime: number;
+  firstSaleAt: string | null;
+  tier: LoyaltyTier | null;
+};
+
 // GET /api/memberships/plans — already resolved for one locale by the backend,
 // so nameByLocale/benefitsByLocale never reach the client.
 export type MembershipBenefit = { text: string; bold?: boolean };

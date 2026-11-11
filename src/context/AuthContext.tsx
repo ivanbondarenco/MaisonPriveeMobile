@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
+import * as accountApi from "@/api/account";
+import type { ProfileInput } from "@/api/account";
 import * as authApi from "@/api/auth";
 import type { LoginInput, RegisterInput } from "@/api/schemas";
 import type { User } from "@/api/types";
@@ -14,6 +16,10 @@ type AuthContextValue = {
   login: (input: LoginInput) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
+  /** Saves the profile on the backend and keeps the stored copy in step. */
+  updateProfile: (input: ProfileInput) => Promise<void>;
+  /** Deletes the account on the backend, then clears this device's session. */
+  deleteAccount: (password: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -89,6 +95,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           authApi.logout(storedRefreshToken).catch(() => {});
         }
         unregisterPushToken().catch(() => {});
+        await clearLocalSession();
+      },
+      updateProfile: async (input) => {
+        const { user: updated } = await accountApi.updateProfile(input);
+        await userStore.set(updated);
+        setUser(updated);
+      },
+      deleteAccount: async (password) => {
+        // The backend already revoked every session and push device; only the
+        // local copy is left to wipe. A wrong password throws before this point.
+        await accountApi.deleteAccount(password);
         await clearLocalSession();
       },
     }),

@@ -28,6 +28,8 @@ export function HomeFooter({ sections }: { sections: FooterLink[] }) {
     { label: t.footer.consignment, onPress: () => router.navigate("/sell") },
     { label: t.screenTitles.membership, onPress: () => router.navigate("/membership") },
     { label: t.footer.referFriend, onPress: () => router.push("/refer") },
+    { label: t.sourcing.label, onPress: () => router.push("/sourcing") },
+    { label: t.authenticity.title, onPress: () => router.push("/authenticity") },
     { label: t.footer.concierge, onPress: () => openSite("/concierge") },
     { label: t.footer.faq, onPress: () => openSite("/info") },
   ];

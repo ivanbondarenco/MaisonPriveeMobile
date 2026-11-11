@@ -91,6 +91,12 @@ export function LoginScreen() {
           ) : null}
 
           <Button label={t.common.signIn} onPress={handleSubmit} loading={isSubmitting} />
+
+          <Link href="/(auth)/forgot-password" asChild>
+            <AppText variant="body" style={styles.forgotLink}>
+              {t.account.forgotLink}
+            </AppText>
+          </Link>
         </View>
 
         <View style={styles.footer}>
@@ -127,6 +133,11 @@ const styles = StyleSheet.create({
   formError: {
     color: "#B3261E",
     marginBottom: spacing.sm,
+  },
+  forgotLink: {
+    marginTop: spacing.sm,
+    textAlign: "center",
+    textDecorationLine: "underline",
   },
   footer: {
     flexDirection: "row",

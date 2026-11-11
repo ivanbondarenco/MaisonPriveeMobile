@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import { ChevronRight } from "lucide-react-native";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
@@ -9,6 +10,7 @@ import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
 import { useAuth } from "@/context/AuthContext";
 import { useT } from "@/i18n";
+import { env } from "@/lib/env";
 import { colors, spacing } from "@/theme";
 
 function NavRow({
@@ -90,6 +92,13 @@ export function SellHubScreen() {
             label={t.sell.referSeller}
             description={t.sell.referSellerHint}
             onPress={() => router.push("/refer")}
+          />
+          {/* The rate card lives on the website (storefront lib/commission-rates.ts),
+              so it's opened there rather than copied into the app. */}
+          <NavRow
+            label={t.commissions.label}
+            description={t.commissions.hint}
+            onPress={() => WebBrowser.openBrowserAsync(`${env.siteUrl}/commissions`).catch(() => {})}
           />
         </View>
       </ScrollView>
