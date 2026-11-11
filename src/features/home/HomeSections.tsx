@@ -50,8 +50,15 @@ export function PromoBanner(props: {
       <AppText style={styles.promoEyebrow}>{props.eyebrow}</AppText>
       <AppText style={styles.promoTitle}>{props.title}</AppText>
       <AppText style={styles.promoBody}>{props.body}</AppText>
-      <Pressable onPress={props.onPress} accessibilityRole="button" style={styles.promoButton}>
-        <AppText style={styles.promoButtonLabel}>{props.cta}</AppText>
+      {/* Hairline outline instead of a solid white box: lighter on the charcoal. */}
+      <Pressable
+        onPress={props.onPress}
+        accessibilityRole="button"
+        style={({ pressed }) => [styles.promoButton, pressed && styles.promoButtonPressed]}
+      >
+        {({ pressed }) => (
+          <AppText style={[styles.promoButtonLabel, pressed && styles.promoButtonLabelPressed]}>{props.cta}</AppText>
+        )}
       </Pressable>
       {props.footnote ? <AppText style={styles.promoFootnote}>{props.footnote}</AppText> : null}
     </View>
@@ -267,24 +274,37 @@ const styles = StyleSheet.create({
   promoBody: {
     fontFamily: fontFamily.bodyLight,
     fontSize: 15,
+    lineHeight: 22,
     color: colors.white,
     textAlign: "center",
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
+    // Narrower than the block so the sentence breaks in two even lines
+    // instead of leaving one word alone above the button.
+    maxWidth: 300,
     opacity: 0.85,
   },
   promoButton: {
-    marginTop: spacing.lg,
-    backgroundColor: colors.white,
-    paddingVertical: spacing.md,
-    minWidth: 200,
+    marginTop: spacing.xl,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.7)",
+    paddingVertical: 14,
+    paddingHorizontal: spacing.xl,
+    minWidth: 220,
     alignItems: "center",
   },
+  promoButtonPressed: {
+    borderColor: colors.gold,
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
+  },
   promoButtonLabel: {
-    fontFamily: fontFamily.bodyMedium,
-    fontSize: 13,
-    letterSpacing: 4,
+    fontFamily: fontFamily.bodyRegular,
+    fontSize: 12,
+    letterSpacing: 3,
     textTransform: "uppercase",
-    color: colors.primary,
+    color: colors.white,
+  },
+  promoButtonLabelPressed: {
+    color: colors.gold,
   },
   promoFootnote: {
     fontFamily: fontFamily.bodyLight,
