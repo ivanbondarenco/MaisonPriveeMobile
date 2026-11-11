@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/apiClient";
+import { flagQueryKey, getFlag } from "./settings";
 
 // The three public lookups the storefront checkout makes before taking a
 // transfer: the admin's payments switch, the bank accounts to transfer to,
@@ -21,16 +22,12 @@ export type ExchangeRate = {
   updatedAt: string;
 };
 
-export const paymentsEnabledQueryKey = ["settings", "payments_enabled"] as const;
+export const paymentsEnabledQueryKey = flagQueryKey("payments_enabled");
 export const bankAccountsQueryKey = ["bank-accounts"] as const;
 export const exchangeRateQueryKey = ["exchange-rate"] as const;
 
-// Anything but an explicit "true" (missing setting, failed request) counts as
-// disabled, exactly like the storefront.
-export const getPaymentsEnabled = () =>
-  apiRequest<{ key: string; value: string } | null>("/settings/payments_enabled", { auth: false })
-    .then((setting) => setting?.value === "true")
-    .catch(() => false);
+// The admin's payments switch; off unless explicitly "true", like the storefront.
+export const getPaymentsEnabled = () => getFlag("payments_enabled");
 
 export const getBankAccounts = () =>
   apiRequest<BankAccount[]>("/bank-accounts", { auth: false }).catch(() => [] as BankAccount[]);
